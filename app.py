@@ -8,7 +8,7 @@ from pygments.formatters import HtmlFormatter
 class Index(webapp.RequestHandler):
   def get(self):
     self.response.headers['Content-Type'] = 'text/plain'
-    self.response.out.write('get')
+    self.response.out.write(readme())
   def post(self):
     lang = self.request.get("lang")
     code = self.request.get("code")
@@ -21,6 +21,10 @@ def pygmentize(lang, code):
   lexer = get_lexer_by_name(lang, stripall=True)
   formatter = HtmlFormatter(linenos=True, cssclass="highlight")
   return highlight(code, lexer, formatter)
+
+def readme():
+  f = open('README', 'r')
+  return f.read()
 
 def main():
   run_wsgi_app(application)

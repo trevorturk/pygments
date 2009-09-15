@@ -1,11 +1,27 @@
+== Welcome
+
+http://pygments.appspot.com serves as a simple API to access the Pygments syntax highlighting library for Python. It's designed for use in web applications that can't support their own installation of Pygments. 
+
 == Usage
 
-GET = see this README
+GET '/' to see this README
 
-POST = HTML output from the Pygments syntax highlighting library
-  Provide "lang" and "code", for example:
+POST '/' to see HTML output from the Pygments syntax highlighting library. Provide "lang" and "code" params, and you'll HTML back. 
+
+  For example:
+
   POST http://pygments.appspot.com?lang=ruby&code=<%= 'hello world'.capitalize %>
-
+  
+  ...which would look like this, if properly escaped:
+  
+  POST /?lang=ruby&code=%3C%25=%20'hello%20world'.capitalize%20%25%3E
+  
+  ...would return:
+  
+  <table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre>1</pre></div></td><td class="code"><div class="highlight"><pre><span class="o">&lt;%=</span> <span class="s1">&#39;hello world&#39;</span><span class="o">.</span><span class="n">capitalize</span> <span class="o">%&gt;</span>
+  </pre></div>
+  </td></tr></table>
+  
 == About
 
 This was created so that http://flowcoder.com could run on http://heroku.com
