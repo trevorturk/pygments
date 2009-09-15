@@ -2,6 +2,8 @@
 
 http://pygments.appspot.com serves as a simple API to access the Pygments syntax highlighting library for Python. It's designed for use in web applications that can't support their own installation of Pygments. 
 
+Note: this isn't quite ready yet... Follow the github project if you want to know when it's done. 
+
 == Usage
 
 GET '/' to see this README
@@ -23,6 +25,7 @@ POST '/' to see HTML output from the Pygments syntax highlighting library. Provi
   </td></tr></table>
   
   ...TODO need ruby example, and perhaps some CSS and a nice example...
+  ...TODO list pygments and python versions...
   
 == About
 
