@@ -1,6 +1,6 @@
 == Welcome
 
-http://pygments.appspot.com serves as a simple API to access the Pygments syntax highlighting library for Python. It's designed for use in web applications that can't support their own installation of Pygments. 
+http://pygments.appspot.com serves as a simple API to access the Pygments syntax highlighting library for Python. It's designed for use in web applications that can't support their own installation of Pygments. It's running Python 2.5 and Pygments 1.2 on Google App Engine, in case you're curious. 
 
 Note: this isn't quite ready yet... Follow the github project if you want to know when it's done. 
 
@@ -25,13 +25,17 @@ POST '/' to see HTML output from the Pygments syntax highlighting library. Provi
   </td></tr></table>
   
   ...TODO need ruby example, and perhaps some CSS and a nice example...
-  ...TODO list pygments and python versions...
   
 == About
 
-This was created so that http://flowcoder.com could run on http://heroku.com
+This site was created so that http://flowcoder.com could run on http://heroku.com
 
 See also:
 http://pygments.org/
 http://appengine.google.com/
 http://github.com/trevorturk/pygments
+
+== Notes
+
+to run locally: dev_appserver.py .
+to deploy: appcfg.py update .
