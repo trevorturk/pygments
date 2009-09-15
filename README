@@ -1,0 +1,16 @@
+== Usage
+
+GET = see this README
+
+POST = HTML output from the Pygments syntax highlighting library
+  Provide "lang" and "code", for example:
+  POST http://pygments.appspot.com?lang=ruby&code=<%= 'hello world'.capitalize %>
+
+== About
+
+This was created so that http://flowcoder.com could run on http://heroku.com
+
+See also:
+http://pygments.org/
+http://appengine.google.com/
+http://github.com/trevorturk/pygments
