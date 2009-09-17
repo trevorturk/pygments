@@ -1,41 +1,57 @@
 == Welcome
 
-http://pygments.appspot.com serves as a simple API to access the Pygments syntax highlighting library for Python. It's designed for use in web applications that can't support their own installation of Pygments. It's running Python 2.5 and Pygments 1.2 on Google App Engine, in case you're curious. 
-
-Note: this isn't quite ready yet... Follow the github project if you want to know when it's done. 
+http://pygments.appspot.com is an unofficial API for the Pygments syntax highlighting library, version 1.2.
+It's designed to provide syntax highlighting for web applications that don't have Python installed. 
 
 == Usage
 
-GET '/' to see this README
+POST to http://pygments.appspot.com with "lang" and "code" parameters in the body. 
+You'll receive pygmentized HTML back, which you can store for later display on your site.
+You can style the pygmentized HTML using CSS like this: http://pygments.appspot.com/default.css
 
-POST '/' to see HTML output from the Pygments syntax highlighting library. Provide "lang" and "code" params, and you'll HTML back. 
+== Ruby Example
 
-  For example:
+$ irb
 
-  POST http://pygments.appspot.com?lang=ruby&code=<%= 'hello world'.capitalize %>
-  
-  ...which would look like this, if properly escaped:
-  
-  POST /?lang=ruby&code=%3C%25=%20'hello%20world'.capitalize%20%25%3E
-  
-  ...would return:
-  
-  <table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre>1</pre></div></td><td class="code"><div class="highlight"><pre><span class="o">&lt;%=</span> <span class="s1">&#39;hello world&#39;</span><span class="o">.</span><span class="n">capitalize</span> <span class="o">%&gt;</span>
-  </pre></div>
-  </td></tr></table>
-  
-  ...TODO need ruby example, and perhaps some CSS and a nice example...
-  
-== About
+require 'net/http'
+require 'uri'
 
-This site was created so that http://flowcoder.com could run on http://heroku.com
+lang = 'python'
+code = 'print "Hello World"'
 
-See also:
-http://pygments.org/
-http://appengine.google.com/
-http://github.com/trevorturk/pygments
+request = Net::HTTP.post_form(URI.parse('http://pygments.appspot.com/'), {'lang'=>lang, 'code'=>code})
+puts request.body
 
-== Notes
+== More Information
 
-to run locally: dev_appserver.py .
-to deploy: appcfg.py update .
+This site was created so that http://flowcoder.com could run on http://heroku.com, but please feel free to use it yourself.
+If you like, you can fork the code on github and create your own Google App Engine site, though. 
+
+Visit http://pygments.org/ for more information about Pygments. 
+Visit http://github.com/richleland/pygments-css for more example CSS files for use with Pygments.
+Visit http://github.com/trevorturk/pygments for more information about this site, and to see the source code. 
+
+== MIT License
+
+Copyright (c) 2009 Trevor Turk
+
+Permission is hereby granted, free of charge, to any person
+obtaining a copy of this software and associated documentation
+files (the "Software"), to deal in the Software without
+restriction, including without limitation the rights to use,
+copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the
+Software is furnished to do so, subject to the following
+conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
+OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+OTHER DEALINGS IN THE SOFTWARE.
