@@ -17,7 +17,7 @@ application = webapp.WSGIApplication([('/', App)], debug=True)
 
 def pygmentize(lang, code):
   lexer = get_lexer_by_name(lang, stripall=True)
-  formatter = HtmlFormatter(linenos=False, cssclass="pygments_appspot")
+  formatter = HtmlFormatter(linenos=False, cssclass="highlight")
   return highlight(code, lexer, formatter)
 
 def main():
