@@ -10,10 +10,10 @@ class App(webapp.RequestHandler):
     self.response.headers['Content-Type'] = 'text/plain'
     self.response.out.write(open('README', 'r').read())
   def post(self):
-    self.response.headers['Content-Type'] = 'text/html'
+    self.response.headers['Content-Type'] = 'text/plain'
     self.response.out.write(pygmentize(self.request.get("lang"), self.request.get("code")))
 
-application = webapp.WSGIApplication([('/', App)], debug=True)
+application = webapp.WSGIApplication([('/', App)])
 
 def pygmentize(lang, code):
   lexer = get_lexer_by_name(lang)
