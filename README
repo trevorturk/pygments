@@ -17,7 +17,7 @@ require 'net/http'
 require 'uri'
 
 lang = 'python'
-code = %q[print "Hello World"]
+code = 'print "Hello World"'
 
 request = Net::HTTP.post_form(URI.parse('http://pygments.appspot.com/'), {'lang'=>lang, 'code'=>code})
 puts request.body
