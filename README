@@ -7,7 +7,7 @@ It's designed to provide syntax highlighting for web applications that don't hav
 
 POST to http://pygments.appspot.com with "lang" and "code" parameters in the body. 
 You'll receive pygmentized HTML back, which you can store for later display on your site.
-You can style the pygmentized HTML using CSS like this: http://pygments.appspot.com/default.css
+You can style the pygmentized HTML using CSS like this: http://github.com/trevorturk/pygments/blob/master/default.css
 
 == Ruby Example
 
