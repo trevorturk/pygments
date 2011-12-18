@@ -1,6 +1,6 @@
 == Welcome
 
-http://pygments.appspot.com is an unofficial API for the Pygments syntax highlighting library, version 1.2.
+http://pygments.appspot.com is an unofficial API for the Pygments syntax highlighting library, version 1.4.
 It's designed to provide syntax highlighting for web applications that don't have Python installed. 
 
 == Usage

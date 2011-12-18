@@ -5,15 +5,11 @@
 
     Lexers for math languages.
 
-    :copyright: Copyright 2006-2009 by the Pygments team, see AUTHORS.
+    :copyright: Copyright 2006-2010 by the Pygments team, see AUTHORS.
     :license: BSD, see LICENSE for details.
 """
 
 import re
-try:
-    set
-except NameError:
-    from sets import Set as set
 
 from pygments.lexer import Lexer, RegexLexer, bygroups, include, do_insertions
 from pygments.token import Comment, String, Punctuation, Keyword, Name, \
@@ -22,7 +18,7 @@ from pygments.token import Comment, String, Punctuation, Keyword, Name, \
 from pygments.lexers.agile import PythonLexer
 
 __all__ = ['MuPADLexer', 'MatlabLexer', 'MatlabSessionLexer', 'NumPyLexer',
-           'SLexer']
+           'RConsoleLexer', 'SLexer']
 
 
 class MuPADLexer(RegexLexer):
@@ -157,10 +153,10 @@ class MatlabLexer(RegexLexer):
             (r'%.*$', Comment),
             (r'^\s*function', Keyword, 'deffunc'),
 
-            # from 'iskeyword' on version 7.4.0.336 (R2007a):
-            (r'(break|case|catch|classdef|continue|else|elseif|end|for|function|'
-             r'global|if|otherwise|parfor|persistent|return|switch|try|while)\b',
-             Keyword),
+            # from 'iskeyword' on version 7.11 (R2010):
+            (r'(break|case|catch|classdef|continue|else|elseif|end|enumerated|'
+             r'events|for|function|global|if|methods|otherwise|parfor|'
+             r'persistent|properties|return|spmd|switch|try|while)\b', Keyword),
 
             ("(" + "|".join(elfun+specfun+elmat) + r')\b',  Name.Builtin),
 
@@ -232,7 +228,7 @@ class MatlabSessionLexer(Lexer):
                 # without is showing error on same line as before...?
                 line = "\n" + line
                 token = (0, Generic.Traceback, line)
-                insertions.append(  (idx, [token,]) )
+                insertions.append((idx, [token]))
 
             else:
                 if curcode:
@@ -338,6 +334,52 @@ class NumPyLexer(PythonLexer):
                 yield index, Keyword.Pseudo, value
             else:
                 yield index, token, value
+
+
+class RConsoleLexer(Lexer):
+    """
+    For R console transcripts or R CMD BATCH output files.
+    """
+
+    name = 'RConsole'
+    aliases = ['rconsole', 'rout']
+    filenames = ['*.Rout']
+
+    def get_tokens_unprocessed(self, text):
+        slexer = SLexer(**self.options)
+
+        current_code_block = ''
+        insertions = []
+
+        for match in line_re.finditer(text):
+            line = match.group()
+            if line.startswith('>') or line.startswith('+'):
+                # Colorize the prompt as such,
+                # then put rest of line into current_code_block
+                insertions.append((len(current_code_block),
+                                   [(0, Generic.Prompt, line[:2])]))
+                current_code_block += line[2:]
+            else:
+                # We have reached a non-prompt line!
+                # If we have stored prompt lines, need to process them first.
+                if current_code_block:
+                    # Weave together the prompts and highlight code.
+                    for item in do_insertions(insertions,
+                          slexer.get_tokens_unprocessed(current_code_block)):
+                        yield item
+                    # Reset vars for next code block.
+                    current_code_block = ''
+                    insertions = []
+                # Now process the actual line itself, this is output from R.
+                yield match.start(), Generic.Output, line
+
+        # If we happen to end on a code block with nothing after it, need to
+        # process the last code block. This is neither elegant nor DRY so
+        # should be changed.
+        if current_code_block:
+            for item in do_insertions(insertions,
+                    slexer.get_tokens_unprocessed(current_code_block)):
+                yield item
 
 
 class SLexer(RegexLexer):

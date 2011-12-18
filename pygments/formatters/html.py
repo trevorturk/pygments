@@ -5,16 +5,13 @@
 
     Formatter for HTML output.
 
-    :copyright: Copyright 2006-2009 by the Pygments team, see AUTHORS.
+    :copyright: Copyright 2006-2010 by the Pygments team, see AUTHORS.
     :license: BSD, see LICENSE for details.
 """
-import sys, os
-import StringIO
 
-try:
-    set
-except NameError:
-    from sets import Set as set
+import os
+import sys
+import StringIO
 
 from pygments.formatter import Formatter
 from pygments.token import Token, Text, STANDARD_TYPES
@@ -24,14 +21,17 @@ from pygments.util import get_bool_opt, get_int_opt, get_list_opt, bytes
 __all__ = ['HtmlFormatter']
 
 
-def escape_html(text):
-    """Escape &, <, > as well as single and double quotes for HTML."""
-    return text.replace('&', '&amp;').  \
-                replace('<', '&lt;').   \
-                replace('>', '&gt;').   \
-                replace('"', '&quot;'). \
-                replace("'", '&#39;')
+_escape_html_table = {
+    ord('&'): u'&amp;',
+    ord('<'): u'&lt;',
+    ord('>'): u'&gt;',
+    ord('"'): u'&quot;',
+    ord("'"): u'&#39;',
+}
 
+def escape_html(text, table=_escape_html_table):
+    """Escape &, <, > as well as single and double quotes for HTML."""
+    return text.translate(table)
 
 def get_random_id():
     """Return a random id for javascript fields."""
@@ -374,22 +374,21 @@ class HtmlFormatter(Formatter):
             except ValueError:
                 pass
 
-        self._class_cache = {}
         self._create_stylesheet()
 
     def _get_css_class(self, ttype):
         """Return the css class of this token type prefixed with
         the classprefix option."""
-        if ttype in self._class_cache:
-            return self._class_cache[ttype]
-        return self.classprefix + _get_ttype_class(ttype)
+        ttypeclass = _get_ttype_class(ttype)
+        if ttypeclass:
+            return self.classprefix + ttypeclass
+        return ''
 
     def _create_stylesheet(self):
         t2c = self.ttype2class = {Token: ''}
         c2s = self.class2style = {}
-        cp = self.classprefix
         for ttype, ndef in self.style:
-            name = cp + _get_ttype_class(ttype)
+            name = self._get_css_class(ttype)
             style = ''
             if ndef['color']:
                 style += 'color: #%s; ' % ndef['color']
@@ -511,6 +510,7 @@ class HtmlFormatter(Formatter):
         st = self.linenostep
         la = self.lineanchors
         aln = self.anchorlinenos
+        nocls = self.noclasses
         if sp:
             lines = []
 
@@ -545,9 +545,16 @@ class HtmlFormatter(Formatter):
         # in case you wonder about the seemingly redundant <div> here: since the
         # content in the other cell also is wrapped in a div, some browsers in
         # some configurations seem to mess up the formatting...
-        yield 0, ('<table class="%stable">' % self.cssclass +
-                  '<tr><td class="linenos"><div class="linenodiv"><pre>' +
-                  ls + '</pre></div></td><td class="code">')
+        if nocls:
+            yield 0, ('<table class="%stable">' % self.cssclass +
+                      '<tr><td><div class="linenodiv" '
+                      'style="background-color: #f0f0f0; padding-right: 10px">'
+                      '<pre style="line-height: 125%">' +
+                      ls + '</pre></div></td><td class="code">')
+        else:
+            yield 0, ('<table class="%stable">' % self.cssclass +
+                      '<tr><td class="linenos"><div class="linenodiv"><pre>' +
+                      ls + '</pre></div></td><td class="code">')
         yield 0, dummyoutfile.getvalue()
         yield 0, '</td></tr></table>'
 
@@ -559,7 +566,23 @@ class HtmlFormatter(Formatter):
         num = self.linenostart
         mw = len(str(len(lines) + num - 1))
 
-        if sp:
+        if self.noclasses:
+            if sp:
+                for t, line in lines:
+                    if num%sp == 0:
+                        style = 'background-color: #ffffc0; padding: 0 5px 0 5px'
+                    else:
+                        style = 'background-color: #f0f0f0; padding: 0 5px 0 5px'
+                    yield 1, '<span style="%s">%*s</span> ' % (
+                        style, mw, (num%st and ' ' or num)) + line
+                    num += 1
+            else:
+                for t, line in lines:
+                    yield 1, ('<span style="background-color: #f0f0f0; '
+                              'padding: 0 5px 0 5px">%*s</span> ' % (
+                              mw, (num%st and ' ' or num)) + line)
+                    num += 1
+        elif sp:
             for t, line in lines:
                 yield 1, '<span class="lineno%s">%*s</span> ' % (
                     num%sp == 0 and ' special' or '', mw,
@@ -582,15 +605,29 @@ class HtmlFormatter(Formatter):
                 yield 0, line
 
     def _wrap_div(self, inner):
+        style = []
+        if (self.noclasses and not self.nobackground and
+            self.style.background_color is not None):
+            style.append('background: %s' % (self.style.background_color,))
+        if self.cssstyles:
+            style.append(self.cssstyles)
+        style = '; '.join(style)
+
         yield 0, ('<div' + (self.cssclass and ' class="%s"' % self.cssclass)
-                  + (self.cssstyles and ' style="%s"' % self.cssstyles) + '>')
+                  + (style and (' style="%s"' % style)) + '>')
         for tup in inner:
             yield tup
         yield 0, '</div>\n'
 
     def _wrap_pre(self, inner):
-        yield 0, ('<pre'
-                  + (self.prestyles and ' style="%s"' % self.prestyles) + '>')
+        style = []
+        if self.prestyles:
+            style.append(self.prestyles)
+        if self.noclasses:
+            style.append('line-height: 125%')
+        style = '; '.join(style)
+
+        yield 0, ('<pre' + (style and ' style="%s"' % style) + '>')
         for tup in inner:
             yield tup
         yield 0, '</pre>'
@@ -605,6 +642,7 @@ class HtmlFormatter(Formatter):
         # for <span style=""> lookup only
         getcls = self.ttype2class.get
         c2s = self.class2style
+        escape_table = _escape_html_table
 
         lspan = ''
         line = ''
@@ -619,7 +657,7 @@ class HtmlFormatter(Formatter):
                 cls = self._get_css_class(ttype)
                 cspan = cls and '<span class="%s">' % cls or ''
 
-            parts = escape_html(value).split('\n')
+            parts = value.translate(escape_table).split('\n')
 
             # for all but the last line
             for part in parts[:-1]:
@@ -661,7 +699,14 @@ class HtmlFormatter(Formatter):
             if t != 1:
                 yield t, value
             if i + 1 in hls: # i + 1 because Python indexes start at 0
-                yield 1, '<span class="hll">%s</span>' % value
+                if self.noclasses:
+                    style = ''
+                    if self.style.highlight_color is not None:
+                        style = (' style="background-color: %s"' %
+                                 (self.style.highlight_color,))
+                    yield 1, '<span%s>%s</span>' % (style, value)
+                else:
+                    yield 1, '<span class="hll">%s</span>' % value
             else:
                 yield 1, value
 
