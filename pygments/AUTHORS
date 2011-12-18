@@ -16,7 +16,6 @@ Other contributors, listed alphabetically, are:
 * Paul Baumgart, 280 North, Inc. -- Objective-J lexer
 * Michael Bayer -- Myghty lexers
 * John Benediktsson -- Factor lexer
-* Christopher Bertels -- Fancy lexer
 * Jarrett Billingsley -- MiniD lexer
 * Adam Blinkinsop -- Haskell, Redcode lexers
 * Frits van Bommel -- assembler lexers
@@ -36,7 +35,7 @@ Other contributors, listed alphabetically, are:
 * Olivier Guibe -- Asymptote lexer
 * Matthew Harrison -- SVG formatter
 * Steven Hazel -- Tcl lexer
-* Aslak Helles√∏y -- Gherkin lexer
+* Aslak Hellesøy -- Gherkin lexer
 * David Hess, Fish Software, Inc. -- Objective-J lexer
 * Varun Hiremath -- Debian control lexer
 * Ben Hollis -- Mason lexer
@@ -52,7 +51,6 @@ Other contributors, listed alphabetically, are:
 * Kirk McDonald -- D lexer
 * Stephen McKamey -- Duel/JBST lexer
 * Lukas Meuser -- BBCode formatter, Lua lexer
-* Michael Mior -- Awk lexer
 * Paulo Moura -- Logtalk lexer
 * Ana Nelson -- Ragel, ANTLR, R console lexers
 * Nam T. Nguyen -- Monokai style

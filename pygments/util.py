@@ -5,11 +5,13 @@
 
     Utility functions.
 
-    :copyright: Copyright 2006-2009 by the Pygments team, see AUTHORS.
+    :copyright: Copyright 2006-2010 by the Pygments team, see AUTHORS.
     :license: BSD, see LICENSE for details.
 """
+
 import re
 import sys
+import codecs
 
 
 split_path_re = re.compile(r'[/\\ ]')
@@ -108,10 +110,16 @@ def make_analysator(f):
     returns float values.
     """
     def text_analyse(text):
-        rv = f(text)
+        try:
+            rv = f(text)
+        except Exception:
+            return 0.0
         if not rv:
             return 0.0
-        return min(1.0, max(0.0, float(rv)))
+        try:
+            return min(1.0, max(0.0, float(rv)))
+        except ValueError:
+            return 0.0
     text_analyse.__doc__ = f.__doc__
     return staticmethod(text_analyse)
 
@@ -206,6 +214,7 @@ if sys.version_info < (3,0):
     import StringIO, cStringIO
     BytesIO = cStringIO.StringIO
     StringIO = StringIO.StringIO
+    uni_open = codecs.open
 else:
     import builtins
     bytes = builtins.bytes
@@ -220,3 +229,4 @@ else:
     import io
     BytesIO = io.BytesIO
     StringIO = io.StringIO
+    uni_open = builtins.open

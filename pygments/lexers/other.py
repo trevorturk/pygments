@@ -5,7 +5,7 @@
 
     Lexers for other languages.
 
-    :copyright: Copyright 2006-2009 by the Pygments team, see AUTHORS.
+    :copyright: Copyright 2006-2010 by the Pygments team, see AUTHORS.
     :license: BSD, see LICENSE for details.
 """
 
@@ -13,7 +13,7 @@ import re
 
 from pygments.lexer import Lexer, RegexLexer, include, bygroups, using, \
      this, do_insertions
-from pygments.token import Error, Punctuation, \
+from pygments.token import Error, Punctuation, Literal, Token, \
      Text, Comment, Operator, Keyword, Name, String, Number, Generic
 from pygments.util import shebang_matches
 from pygments.lexers.web import HtmlLexer
@@ -24,7 +24,9 @@ __all__ = ['SqlLexer', 'MySqlLexer', 'SqliteConsoleLexer', 'BrainfuckLexer',
            'MOOCodeLexer', 'SmalltalkLexer', 'TcshLexer', 'LogtalkLexer',
            'GnuplotLexer', 'PovrayLexer', 'AppleScriptLexer',
            'BashSessionLexer', 'ModelicaLexer', 'RebolLexer', 'ABAPLexer',
-           'NewspeakLexer']
+           'NewspeakLexer', 'GherkinLexer', 'AsymptoteLexer',
+           'PostScriptLexer', 'AutohotkeyLexer', 'GoodDataCLLexer',
+           'MaqlLexer', 'ProtoBufLexer', 'HybrisLexer']
 
 line_re  = re.compile('.*?\n')
 
@@ -321,14 +323,14 @@ class BefungeLexer(RegexLexer):
 
 class BashLexer(RegexLexer):
     """
-    Lexer for (ba)sh shell scripts.
+    Lexer for (ba|k|)sh shell scripts.
 
     *New in Pygments 0.6.*
     """
 
     name = 'Bash'
-    aliases = ['bash', 'sh']
-    filenames = ['*.sh']
+    aliases = ['bash', 'sh', 'ksh']
+    filenames = ['*.sh', '*.ksh', '*.bash', '*.ebuild', '*.eclass']
     mimetypes = ['application/x-sh', 'application/x-shellscript']
 
     tokens = {
@@ -355,12 +357,12 @@ class BashLexer(RegexLexer):
             (r'\\[\w\W]', String.Escape),
             (r'(\b\w+)(\s*)(=)', bygroups(Name.Variable, Text, Operator)),
             (r'[\[\]{}()=]', Operator),
-            (r'<<\s*(\'?)\\?(\w+)[\w\W]+?\2', String),
+            (r'<<-?\s*(\'?)\\?(\w+)[\w\W]+?\2', String),
             (r'&&|\|\|', Operator),
         ],
         'data': [
-            (r'\$?"(\\\\|\\[0-7]+|\\.|[^"])*"', String.Double),
-            (r"\$?'(\\\\|\\[0-7]+|\\.|[^'])*'", String.Single),
+            (r'(?s)\$?"(\\\\|\\[0-7]+|\\.|[^"\\])*"', String.Double),
+            (r"(?s)\$?'(\\\\|\\[0-7]+|\\.|[^'\\])*'", String.Single),
             (r';', Text),
             (r'\s+', Text),
             (r'[^=\s\n\[\]{}()$"\'`\\<]+', Text),
@@ -633,11 +635,11 @@ class SmalltalkLexer(RegexLexer):
         ],
         '_parenth_helper' : [
             include('whitespaces'),
+            (r'(\d+r)?-?\d+(\.\d+)?(e-?\d+)?', Number),
             (r'[-+*/\\~<>=|&#!?,@%\w+:]+', String.Symbol),
             # literals
             (r'\'[^\']*\'', String),
             (r'\$.', String.Char),
-            (r'(\d+r)?-?\d+(\.\d+)?(e-?\d+)?', Number),
             (r'#*\(', String.Symbol, 'inner_parenth'),
         ],
         'parenth' : [
@@ -745,8 +747,8 @@ class TcshLexer(RegexLexer):
             (r'<<\s*(\'?)\\?(\w+)[\w\W]+?\2', String),
         ],
         'data': [
-            (r'"(\\\\|\\[0-7]+|\\.|[^"])*"', String.Double),
-            (r"'(\\\\|\\[0-7]+|\\.|[^'])*'", String.Single),
+            (r'(?s)"(\\\\|\\[0-7]+|\\.|[^"\\])*"', String.Double),
+            (r"(?s)'(\\\\|\\[0-7]+|\\.|[^'\\])*'", String.Single),
             (r'\s+', Text),
             (r'[^=\s\n\[\]{}()$"\'`\\]+', Text),
             (r'\d+(?= |\Z)', Number),
@@ -808,7 +810,8 @@ class LogtalkLexer(RegexLexer):
             # Reflection
             (r'(current_predicate|predicate_property)(?=[(])', Keyword),
             # DCGs and term expansion
-            (r'(expand_term|(goal|term)_expansion|phrase)(?=[(])', Keyword),
+            (r'(expand_(goal|term)|(goal|term)_expansion|phrase)(?=[(])',
+             Keyword),
             # Entity
             (r'(abolish|c(reate|urrent))_(object|protocol|category)(?=[(])',
              Keyword),
@@ -921,19 +924,22 @@ class LogtalkLexer(RegexLexer):
         ],
 
         'directive': [
+            # Conditional compilation directives
+            (r'(el)?if(?=[(])', Keyword, 'root'),
+            (r'(e(lse|ndif))[.]', Keyword, 'root'),
             # Entity directives
             (r'(category|object|protocol)(?=[(])', Keyword, 'entityrelations'),
             (r'(end_(category|object|protocol))[.]',Keyword, 'root'),
             # Predicate scope directives
             (r'(public|protected|private)(?=[(])', Keyword, 'root'),
             # Other directives
-            (r'e(ncoding|xport)(?=[(])', Keyword, 'root'),
+            (r'e(n(coding|sure_loaded)|xport)(?=[(])', Keyword, 'root'),
             (r'in(fo|itialization)(?=[(])', Keyword, 'root'),
             (r'(dynamic|synchronized|threaded)[.]', Keyword, 'root'),
-            (r'(alias|d(ynamic|iscontiguous)|m(eta_predicate|ode|ultifile)'
-             r'|synchronized)(?=[(])', Keyword, 'root'),
+            (r'(alias|d(ynamic|iscontiguous)|m(eta_predicate|ode|ultifile)|'
+             r's(et_(logtalk|prolog)_flag|ynchronized))(?=[(])', Keyword, 'root'),
             (r'op(?=[(])', Keyword, 'root'),
-            (r'(calls|use(s|_module))(?=[(])', Keyword, 'root'),
+            (r'(calls|reexport|use(s|_module))(?=[(])', Keyword, 'root'),
             (r'[a-z][a-zA-Z0-9_]*(?=[(])', Text, 'root'),
             (r'[a-z][a-zA-Z0-9_]*[.]', Text, 'root'),
         ],
@@ -968,6 +974,15 @@ class LogtalkLexer(RegexLexer):
             (r'\s+', Text),
         ]
     }
+
+    def analyse_text(text):
+        if ':- object(' in text:
+            return True
+        if ':- protocol(' in text:
+            return True
+        if ':- category(' in text:
+            return True
+        return False
 
 
 def _shortened(word):
@@ -1151,7 +1166,7 @@ class PovrayLexer(RegexLexer):
         'root': [
             (r'/\*[\w\W]*?\*/', Comment.Multiline),
             (r'//.*\n', Comment.Single),
-            (r'"(?:\\.|[^"])+"', String.Double),
+            (r'(?s)"(?:\\.|[^"\\])+"', String.Double),
             (r'#(debug|default|else|end|error|fclose|fopen|if|ifdef|ifndef|'
              r'include|range|read|render|statistics|switch|undef|version|'
              r'warning|while|write|define|macro|local|declare)',
@@ -2080,3 +2095,749 @@ class NewspeakLexer(RegexLexer):
        ]
     }
 
+class GherkinLexer(RegexLexer):
+    """
+    For `Gherkin <http://github.com/aslakhellesoy/gherkin/>` syntax.
+
+    *New in Pygments 1.2.*
+    """
+    name = 'Gherkin'
+    aliases = ['Cucumber', 'cucumber', 'Gherkin', 'gherkin']
+    filenames = ['*.feature']
+    mimetypes = ['text/x-gherkin']
+
+    feature_keywords         = ur'^(기능|機能|功能|フィーチャ|خاصية|תכונה|Функціонал|Функционалност|Функционал|Фича|Особина|Могућност|Özellik|Właściwość|Tính năng|Trajto|Savybė|Požiadavka|Požadavek|Osobina|Ominaisuus|Omadus|OH HAI|Mogućnost|Mogucnost|Jellemző|Fīča|Funzionalità|Funktionalität|Funkcionalnost|Funkcionalitāte|Funcționalitate|Functionaliteit|Functionalitate|Funcionalitat|Funcionalidade|Fonctionnalité|Fitur|Feature|Egenskap|Egenskab|Crikey|Característica|Arwedd)(:)(.*)$'
+    feature_element_keywords = ur'^(\s*)(시나리오 개요|시나리오|배경|背景|場景大綱|場景|场景大纲|场景|劇本大綱|劇本|テンプレ|シナリオテンプレート|シナリオテンプレ|シナリオアウトライン|シナリオ|سيناريو مخطط|سيناريو|الخلفية|תרחיש|תבנית תרחיש|רקע|Тарих|Сценарій|Сценарио|Сценарий структураси|Сценарий|Структура сценарію|Структура сценарија|Структура сценария|Скица|Рамка на сценарий|Пример|Предыстория|Предистория|Позадина|Передумова|Основа|Концепт|Контекст|Założenia|Wharrimean is|Tình huống|The thing of it is|Tausta|Taust|Tapausaihio|Tapaus|Szenariogrundriss|Szenario|Szablon scenariusza|Stsenaarium|Struktura scenarija|Skica|Skenario konsep|Skenario|Situācija|Senaryo taslağı|Senaryo|Scénář|Scénario|Schema dello scenario|Scenārijs pēc parauga|Scenārijs|Scenár|Scenaro|Scenariusz|Scenariul de şablon|Scenariul de sablon|Scenariu|Scenario Outline|Scenario Amlinellol|Scenario|Scenarijus|Scenarijaus šablonas|Scenarij|Scenarie|Rerefons|Raamstsenaarium|Primer|Pozadí|Pozadina|Pozadie|Plan du scénario|Plan du Scénario|Osnova scénáře|Osnova|Náčrt Scénáře|Náčrt Scenáru|Mate|MISHUN SRSLY|MISHUN|Kịch bản|Konturo de la scenaro|Kontext|Konteksts|Kontekstas|Kontekst|Koncept|Khung tình huống|Khung kịch bản|Háttér|Grundlage|Geçmiş|Forgatókönyv vázlat|Forgatókönyv|Fono|Esquema do Cenário|Esquema do Cenario|Esquema del escenario|Esquema de l\'escenari|Escenario|Escenari|Dis is what went down|Dasar|Contexto|Contexte|Contesto|Condiţii|Conditii|Cenário|Cenario|Cefndir|Bối cảnh|Blokes|Bakgrunn|Bakgrund|Baggrund|Background|B4|Antecedents|Antecedentes|All y\'all|Achtergrond|Abstrakt Scenario|Abstract Scenario)(:)(.*)$'
+    examples_keywords        = ur'^(\s*)(예|例子|例|サンプル|امثلة|דוגמאות|Сценарији|Примери|Приклади|Мисоллар|Значения|Örnekler|Voorbeelden|Variantai|Tapaukset|Scenarios|Scenariji|Scenarijai|Příklady|Példák|Príklady|Przykłady|Primjeri|Primeri|Piemēri|Pavyzdžiai|Paraugs|Juhtumid|Exemplos|Exemples|Exemplele|Exempel|Examples|Esempi|Enghreifftiau|Ekzemploj|Eksempler|Ejemplos|EXAMPLZ|Dữ liệu|Contoh|Cobber|Beispiele)(:)(.*)$'
+    step_keywords            = ur'^(\s*)(하지만|조건|먼저|만일|만약|단|그리고|그러면|那麼|那么|而且|當|当|前提|假設|假如|但是|但し|並且|もし|ならば|ただし|しかし|かつ|و |متى |لكن |عندما |ثم |بفرض |اذاً |כאשר |וגם |בהינתן |אזי |אז |אבל |Якщо |Унда |То |Припустимо, що |Припустимо |Онда |Но |Нехай |Лекин |Когато |Када |Кад |К тому же |И |Задато |Задати |Задате |Если |Допустим |Дадено |Ва |Бирок |Аммо |Али |Але |Агар |А |І |Și |És |Zatati |Zakładając |Zadato |Zadate |Zadano |Zadani |Zadan |Youse know when youse got |Youse know like when |Yna |Ya know how |Ya gotta |Y |Wun |Wtedy |When y\'all |When |Wenn |WEN |Và |Ve |Und |Un |Thì |Then y\'all |Then |Tapi |Tak |Tada |Tad |Så |Stel |Soit |Siis |Si |Sed |Se |Quando |Quand |Quan |Pryd |Pokud |Pokiaľ |Però |Pero |Pak |Oraz |Onda |Ond |Oletetaan |Og |Och |O zaman |Når |När |Niin |Nhưng |N |Mutta |Men |Mas |Maka |Majd |Mais |Maar |Ma |Lorsque |Lorsqu\'|Kun |Kuid |Kui |Khi |Keď |Ketika |Když |Kaj |Kai |Kada |Kad |Jeżeli |Ja |Ir |I CAN HAZ |I |Ha |Givun |Givet |Given y\'all |Given |Gitt |Gegeven |Gegeben sei |Fakat |Eğer ki |Etant donné |Et |Então |Entonces |Entao |En |Eeldades |E |Duota |Dun |Donitaĵo |Donat |Donada |Do |Diyelim ki |Dengan |Den youse gotta |De |Dato |Dar |Dann |Dan |Dado |Dacă |Daca |DEN |Când |Cuando |Cho |Cept |Cand |Cal |But y\'all |But |Buh |Biết |Bet |BUT |Atès |Atunci |Atesa |Anrhegedig a |Angenommen |And y\'all |And |An |Ama |Als |Alors |Allora |Ali |Aleshores |Ale |Akkor |Aber |AN |A také |A |\* )'
+
+    tokens = {
+        'comments': [
+            (r'#.*$', Comment),
+          ],
+        'feature_elements' : [
+            (step_keywords, Keyword, "step_content_stack"),
+            include('comments'),
+            (r"(\s|.)", Name.Function),
+          ],
+        'feature_elements_on_stack' : [
+            (step_keywords, Keyword, "#pop:2"),
+            include('comments'),
+            (r"(\s|.)", Name.Function),
+          ],
+        'examples_table': [
+            (r"\s+\|", Keyword, 'examples_table_header'),
+            include('comments'),
+            (r"(\s|.)", Name.Function),
+          ],
+        'examples_table_header': [
+            (r"\s+\|\s*$", Keyword, "#pop:2"),
+            include('comments'),
+            (r"\s*\|", Keyword),
+            (r"[^\|]", Name.Variable),
+          ],
+        'scenario_sections_on_stack': [
+            (feature_element_keywords, bygroups(Name.Function, Keyword, Keyword, Name.Function), "feature_elements_on_stack"),
+          ],
+        'narrative': [
+            include('scenario_sections_on_stack'),
+            (r"(\s|.)", Name.Function),
+          ],
+        'table_vars': [
+            (r'(<[^>]+>)', Name.Variable),
+          ],
+        'numbers': [
+            (r'(\d+\.?\d*|\d*\.\d+)([eE][+-]?[0-9]+)?', String),
+          ],
+        'string': [
+            include('table_vars'),
+            (r'(\s|.)', String),
+          ],
+        'py_string': [
+            (r'"""', Keyword, "#pop"),
+            include('string'),
+          ],
+          'step_content_root':[
+            (r"$", Keyword, "#pop"),
+            include('step_content'),
+          ],
+          'step_content_stack':[
+            (r"$", Keyword, "#pop:2"),
+            include('step_content'),
+          ],
+          'step_content':[
+            (r'"', Name.Function, "double_string"),
+            include('table_vars'),
+            include('numbers'),
+            include('comments'),
+            (r'(\s|.)', Name.Function),
+          ],
+          'table_content': [
+            (r"\s+\|\s*$", Keyword, "#pop"),
+            include('comments'),
+            (r"\s*\|", Keyword),
+            include('string'),
+          ],
+        'double_string': [
+            (r'"', Name.Function, "#pop"),
+            include('string'),
+          ],
+        'root': [
+            (r'\n', Name.Function),
+            include('comments'),
+            (r'"""', Keyword, "py_string"),
+            (r'\s+\|', Keyword, 'table_content'),
+            (r'"', Name.Function, "double_string"),
+            include('table_vars'),
+            include('numbers'),
+            (r'(\s*)(@[^@\r\n\t ]+)', bygroups(Name.Function, Name.Tag)),
+            (step_keywords, bygroups(Name.Function, Keyword), "step_content_root"),
+            (feature_keywords, bygroups(Keyword, Keyword, Name.Function), 'narrative'),
+            (feature_element_keywords, bygroups(Name.Function, Keyword, Keyword, Name.Function), "feature_elements"),
+            (examples_keywords, bygroups(Name.Function, Keyword, Keyword, Name.Function), "examples_table"),
+            (r'(\s|.)', Name.Function),
+        ]
+    }
+
+class AsymptoteLexer(RegexLexer):
+    """
+    For `Asymptote <http://asymptote.sf.net/>`_ source code.
+
+    *New in Pygments 1.2.*
+    """
+    name = 'Asymptote'
+    aliases = ['asy', 'asymptote']
+    filenames = ['*.asy']
+    mimetypes = ['text/x-asymptote']
+
+    #: optional Comment or Whitespace
+    _ws = r'(?:\s|//.*?\n|/[*].*?[*]/)+'
+
+    tokens = {
+        'whitespace': [
+            (r'\n', Text),
+            (r'\s+', Text),
+            (r'\\\n', Text), # line continuation
+            (r'//(\n|(.|\n)*?[^\\]\n)', Comment),
+            (r'/(\\\n)?[*](.|\n)*?[*](\\\n)?/', Comment),
+        ],
+        'statements': [
+            # simple string (TeX friendly)
+            (r'"(\\\\|\\"|[^"])*"', String),
+            # C style string (with character escapes)
+            (r"'", String, 'string'),
+            (r'(\d+\.\d*|\.\d+|\d+)[eE][+-]?\d+[lL]?', Number.Float),
+            (r'(\d+\.\d*|\.\d+|\d+[fF])[fF]?', Number.Float),
+            (r'0x[0-9a-fA-F]+[Ll]?', Number.Hex),
+            (r'0[0-7]+[Ll]?', Number.Oct),
+            (r'\d+[Ll]?', Number.Integer),
+            (r'[~!%^&*+=|?:<>/-]', Operator),
+            (r'[()\[\],.]', Punctuation),
+            (r'\b(case)(.+?)(:)', bygroups(Keyword, using(this), Text)),
+            (r'(and|controls|tension|atleast|curl|if|else|while|for|do|'
+             r'return|break|continue|struct|typedef|new|access|import|'
+             r'unravel|from|include|quote|static|public|private|restricted|'
+             r'this|explicit|true|false|null|cycle|newframe|operator)\b', Keyword),
+            # Since an asy-type-name can be also an asy-function-name,
+            # in the following we test if the string "  [a-zA-Z]" follows
+            # the Keyword.Type.
+            # Of course it is not perfect !
+            (r'(Braid|FitResult|Label|Legend|TreeNode|abscissa|arc|arrowhead|'
+             r'binarytree|binarytreeNode|block|bool|bool3|bounds|bqe|circle|'
+             r'conic|coord|coordsys|cputime|ellipse|file|filltype|frame|grid3|'
+             r'guide|horner|hsv|hyperbola|indexedTransform|int|inversion|key|'
+             r'light|line|linefit|marginT|marker|mass|object|pair|parabola|path|'
+             r'path3|pen|picture|point|position|projection|real|revolution|'
+             r'scaleT|scientific|segment|side|slice|splitface|string|surface|'
+             r'tensionSpecifier|ticklocate|ticksgridT|tickvalues|transform|'
+             r'transformation|tree|triangle|trilinear|triple|vector|'
+             r'vertex|void)(?=([ ]{1,}[a-zA-Z]))', Keyword.Type),
+            # Now the asy-type-name which are not asy-function-name
+            # except yours !
+            # Perhaps useless
+            (r'(Braid|FitResult|TreeNode|abscissa|arrowhead|block|bool|bool3|'
+             r'bounds|coord|frame|guide|horner|int|linefit|marginT|pair|pen|'
+             r'picture|position|real|revolution|slice|splitface|ticksgridT|'
+             r'tickvalues|tree|triple|vertex|void)\b', Keyword.Type),
+            ('[a-zA-Z_][a-zA-Z0-9_]*:(?!:)', Name.Label),
+            ('[a-zA-Z_][a-zA-Z0-9_]*', Name),
+            ],
+        'root': [
+            include('whitespace'),
+            # functions
+            (r'((?:[a-zA-Z0-9_*\s])+?(?:\s|[*]))'    # return arguments
+             r'([a-zA-Z_][a-zA-Z0-9_]*)'             # method name
+             r'(\s*\([^;]*?\))'                      # signature
+             r'(' + _ws + r')({)',
+             bygroups(using(this), Name.Function, using(this), using(this),
+                      Punctuation),
+             'function'),
+            # function declarations
+            (r'((?:[a-zA-Z0-9_*\s])+?(?:\s|[*]))'    # return arguments
+             r'([a-zA-Z_][a-zA-Z0-9_]*)'             # method name
+             r'(\s*\([^;]*?\))'                      # signature
+             r'(' + _ws + r')(;)',
+             bygroups(using(this), Name.Function, using(this), using(this),
+                      Punctuation)),
+            ('', Text, 'statement'),
+        ],
+        'statement' : [
+            include('whitespace'),
+            include('statements'),
+            ('[{}]', Punctuation),
+            (';', Punctuation, '#pop'),
+        ],
+        'function': [
+            include('whitespace'),
+            include('statements'),
+            (';', Punctuation),
+            ('{', Punctuation, '#push'),
+            ('}', Punctuation, '#pop'),
+        ],
+        'string': [
+            (r"'", String, '#pop'),
+            (r'\\([\\abfnrtv"\'?]|x[a-fA-F0-9]{2,4}|[0-7]{1,3})', String.Escape),
+            (r'\n', String),
+            (r"[^\\'\n]+", String), # all other characters
+            (r'\\\n', String),
+            (r'\\n', String), # line continuation
+            (r'\\', String), # stray backslash
+            ]
+        }
+
+    def get_tokens_unprocessed(self, text):
+        from pygments.lexers._asybuiltins import ASYFUNCNAME, ASYVARNAME
+        for index, token, value in \
+               RegexLexer.get_tokens_unprocessed(self, text):
+           if token is Name and value in ASYFUNCNAME:
+               token = Name.Function
+           elif token is Name and value in ASYVARNAME:
+               token = Name.Variable
+           yield index, token, value
+
+
+class PostScriptLexer(RegexLexer):
+    """
+    Lexer for PostScript files.
+
+    The PostScript Language Reference published by Adobe at
+    <http://partners.adobe.com/public/developer/en/ps/PLRM.pdf>
+    is the authority for this.
+
+    *New in Pygments 1.4.*
+    """
+    name = 'PostScript'
+    aliases = ['postscript']
+    filenames = ['*.ps', '*.eps']
+    mimetypes = ['application/postscript']
+
+    delimiter = r'\(\)\<\>\[\]\{\}\/\%\s'
+    delimiter_end = r'(?=[%s])' % delimiter
+
+    valid_name_chars = r'[^%s]' % delimiter
+    valid_name = r"%s+%s" % (valid_name_chars, delimiter_end)
+
+    tokens = {
+        'root': [
+            # All comment types
+            (r'^%!.+\n', Comment.Preproc),
+            (r'%%.*\n', Comment.Special),
+            (r'(^%.*\n){2,}', Comment.Multiline),
+            (r'%.*\n', Comment.Single),
+
+            # String literals are awkward; enter separate state.
+            (r'\(', String, 'stringliteral'),
+
+            (r'[\{\}(\<\<)(\>\>)\[\]]', Punctuation),
+
+            # Numbers
+            (r'<[0-9A-Fa-f]+>' + delimiter_end, Number.Hex),
+            # Slight abuse: use Oct to signify any explicit base system
+            (r'[0-9]+\#(\-|\+)?([0-9]+\.?|[0-9]*\.[0-9]+|[0-9]+\.[0-9]*)'
+             r'((e|E)[0-9]+)?' + delimiter_end, Number.Oct),
+            (r'(\-|\+)?([0-9]+\.?|[0-9]*\.[0-9]+|[0-9]+\.[0-9]*)((e|E)[0-9]+)?'
+             + delimiter_end, Number.Float),
+            (r'(\-|\+)?[0-9]+' + delimiter_end, Number.Integer),
+
+            # References
+            (r'\/%s' % valid_name, Name.Variable),
+
+            # Names
+            (valid_name, Name.Function),      # Anything else is executed
+
+            # These keywords taken from
+            # <http://www.math.ubc.ca/~cass/graphics/manual/pdf/a1.pdf>
+            # Is there an authoritative list anywhere that doesn't involve
+            # trawling documentation?
+
+            (r'(false|true)' + delimiter_end, Keyword.Constant),
+
+            # Conditionals / flow control
+            (r'(eq|ne|ge|gt|le|lt|and|or|not|if|ifelse|for|forall)'
+             + delimiter_end, Keyword.Reserved),
+
+            ('(abs|add|aload|arc|arcn|array|atan|begin|bind|ceiling|charpath|'
+             'clip|closepath|concat|concatmatrix|copy|cos|currentlinewidth|'
+             'currentmatrix|currentpoint|curveto|cvi|cvs|def|defaultmatrix|'
+             'dict|dictstackoverflow|div|dtransform|dup|end|exch|exec|exit|exp|'
+             'fill|findfont|floor|get|getinterval|grestore|gsave|gt|'
+             'identmatrix|idiv|idtransform|index|invertmatrix|itransform|'
+             'length|lineto|ln|load|log|loop|matrix|mod|moveto|mul|neg|newpath|'
+             'pathforall|pathbbox|pop|print|pstack|put|quit|rand|rangecheck|'
+             'rcurveto|repeat|restore|rlineto|rmoveto|roll|rotate|round|run|'
+             'save|scale|scalefont|setdash|setfont|setgray|setlinecap|'
+             'setlinejoin|setlinewidth|setmatrix|setrgbcolor|shfill|show|'
+             'showpage|sin|sqrt|stack|stringwidth|stroke|strokepath|sub|'
+             'syntaxerror|transform|translate|truncate|typecheck|undefined|'
+             'undefinedfilename|undefinedresult)' + delimiter_end,
+             Name.Builtin),
+
+            (r'\s+', Text),
+        ],
+
+        'stringliteral': [
+            (r'[^\(\)\\]+', String),
+            (r'\\', String.Escape, 'escape'),
+            (r'\(', String, '#push'),
+            (r'\)', String, '#pop'),
+        ],
+
+        'escape': [
+            (r'([0-8]{3}|n|r|t|b|f|\\|\(|\)|)', String.Escape, '#pop'),
+        ],
+    }
+
+
+class AutohotkeyLexer(RegexLexer):
+    """
+    For `autohotkey <http://www.autohotkey.com/>`_ source code.
+
+    *New in Pygments 1.4.*
+    """
+    name = 'autohotkey'
+    aliases = ['ahk']
+    filenames = ['*.ahk', '*.ahkl']
+    mimetypes = ['text/x-autohotkey']
+
+    flags = re.IGNORECASE | re.DOTALL | re.MULTILINE
+
+    tokens = {
+        'root': [
+            include('whitespace'),
+            (r'^\(', String, 'continuation'),
+            include('comments'),
+            (r'(^\s*)(\w+)(\s*)(=)',
+             bygroups(Text.Whitespace, Name, Text.Whitespace, Operator),
+             'command'),
+            (r'([\w#@$?\[\]]+)(\s*)(\()',
+             bygroups(Name.Function, Text.Whitespace, Punctuation),
+             'parameters'),
+            include('directives'),
+            include('labels'),
+            include('commands'),
+            include('expressions'),
+            include('numbers'),
+            include('literals'),
+            include('keynames'),
+            include('keywords'),
+        ],
+        'command': [
+            include('comments'),
+            include('whitespace'),
+            (r'^\(', String, 'continuation'),
+            (r'[^\n]*?(?=;*|$)', String, '#pop'),
+            include('numbers'),
+            include('literals'),
+        ],
+
+        'expressions': [
+            include('comments'),
+            include('whitespace'),
+            include('numbers'),
+            include('literals'),
+            (r'([]\w#@$?[]+)(\s*)(\()',
+             bygroups(Name.Function, Text.Whitespace, Punctuation),
+             'parameters'),
+            (r'A_\w+', Name.Builtin),
+            (r'%[]\w#@$?[]+?%', Name.Variable),
+            # blocks: if, else, function definitions
+            (r'{', Punctuation, 'block'),
+            # parameters in function calls
+            ],
+        'literals': [
+            (r'"', String, 'string'),
+            (r'A_\w+', Name.Builtin),
+            (r'%[]\w#@$?[]+?%', Name.Variable),
+            (r'[-~!%^&*+|?:<>/=]=?', Operator, 'expressions'),
+            (r'==', Operator, 'expressions'),
+            ('[{()},.%#`;]', Punctuation),
+            (r'\\', Punctuation),
+            include('keywords'),
+            (r'\w+', Text),
+            ],
+        'string': [
+            (r'"', String, '#pop'),
+            (r'""|`.', String.Escape),
+            (r'[^\`"\n]+', String), # all other characters
+        ],
+        'block': [
+            include('root'),
+            ('{', Punctuation, '#push'),
+            ('}', Punctuation, '#pop'),
+        ],
+        'parameters': [
+            (r'\)', Punctuation, '#pop'),
+            (r'\(', Punctuation, '#push'),
+            include('numbers'),
+            include('literals'),
+            include('whitespace'),
+        ],
+        'keywords': [
+            (r'(static|global|local)\b', Keyword.Type),
+            (r'(if|else|and|or)\b', Keyword.Reserved),
+            ],
+        'directives': [
+            (r'#\w+?\s', Keyword),
+            ],
+        'labels': [
+            # hotkeys and labels
+            # technically, hotkey names are limited to named keys and buttons
+            (r'(^\s*)([^:\s]+?:{1,2})', bygroups(Text.Whitespace, Name.Label)),
+             # hotstrings
+            (r'(^\s*)(::[]\w#@$?[]+?::)', bygroups(Text.Whitespace, Name.Label)),
+            ],
+        'comments': [
+            (r'^;+.*?$', Comment.Single),  # beginning of line comments
+            (r'(?<=\s);+.*?$', Comment.Single),    # end of line comments
+            (r'^/\*.*?\n\*/', Comment.Multiline),
+            (r'(?<!\n)/\*.*?\n\*/', Error),  # must be at start of line
+            ],
+        'whitespace': [
+            (r'[ \t]+', Text.Whitespace),
+            ],
+        'numbers': [
+            (r'(\d+\.\d*|\d*\.\d+)([eE][+-]?[0-9]+)?', Number.Float),
+            (r'\d+[eE][+-]?[0-9]+', Number.Float),
+            (r'0[0-7]+', Number.Oct),
+            (r'0[xX][a-fA-F0-9]+', Number.Hex),
+            (r'\d+L', Number.Integer.Long),
+            (r'\d+', Number.Integer)
+        ],
+        'continuation': [
+            (r'\n\)', Punctuation, '#pop'),
+            (r'\s[^\n\)]+', String),
+        ],
+        'keynames': [
+            (r'\[[^\]]+\]', Keyword, 'keynames')
+        ],
+        'commands': [
+            (r'(autotrim|blockinput|break|click|'
+             r'clipwait|continue|control|'
+             r'controlclick|controlfocus|controlget|'
+             r'controlgetfocus|controlgetpos|controlgettext|'
+             r'controlmove|controlsend|controlsendraw|'
+             r'controlsettext|coordmode|critical|'
+             r'detecthiddentext|detecthiddenwindows|'
+             r'dllcall|drive|'
+             r'driveget|drivespacefree|'
+             r'else|envadd|envdiv|'
+             r'envget|envmult|envset|'
+             r'envsub|envupdate|exit|'
+             r'exitapp|fileappend|filecopy|'
+             r'filecopydir|filecreatedir|filecreateshortcut|'
+             r'filedelete|filegetattrib|filegetshortcut|'
+             r'filegetsize|filegettime|filegetversion|'
+             r'fileinstall|filemove|filemovedir|'
+             r'fileread|filereadline|filerecycle|'
+             r'filerecycleempty|fileremovedir|fileselectfile|'
+             r'fileselectfolder|filesetattrib|filesettime|'
+             r'formattime|gosub|'
+             r'goto|groupactivate|groupadd|'
+             r'groupclose|groupdeactivate|gui|'
+             r'guicontrol|guicontrolget|hotkey|'
+             r'ifexist|ifgreater|ifgreaterorequal|'
+             r'ifinstring|ifless|iflessorequal|'
+             r'ifmsgbox|ifnotequal|ifnotexist|'
+             r'ifnotinstring|ifwinactive|ifwinexist|'
+             r'ifwinnotactive|ifwinnotexist|imagesearch|'
+             r'inidelete|iniread|iniwrite|'
+             r'input|inputbox|keyhistory|'
+             r'keywait|listhotkeys|listlines|'
+             r'listvars|loop|'
+             r'menu|mouseclick|mouseclickdrag|'
+             r'mousegetpos|mousemove|msgbox|'
+             r'onmessage|onexit|outputdebug|'
+             r'pixelgetcolor|pixelsearch|postmessage|'
+             r'process|progress|random|'
+             r'regexmatch|regexreplace|registercallback|'
+             r'regdelete|regread|regwrite|'
+             r'reload|repeat|return|'
+             r'run|runas|runwait|'
+             r'send|sendevent|sendinput|'
+             r'sendmessage|sendmode|sendplay|'
+             r'sendraw|setbatchlines|setcapslockstate|'
+             r'setcontroldelay|setdefaultmousespeed|setenv|'
+             r'setformat|setkeydelay|setmousedelay|'
+             r'setnumlockstate|setscrolllockstate|'
+             r'setstorecapslockmode|'
+             r'settimer|settitlematchmode|setwindelay|'
+             r'setworkingdir|shutdown|sleep|'
+             r'sort|soundbeep|soundget|'
+             r'soundgetwavevolume|soundplay|soundset|'
+             r'soundsetwavevolume|splashimage|splashtextoff|'
+             r'splashtexton|splitpath|statusbargettext|'
+             r'statusbarwait|stringcasesense|stringgetpos|'
+             r'stringleft|stringlen|stringlower|'
+             r'stringmid|stringreplace|stringright|'
+             r'stringsplit|stringtrimleft|stringtrimright|'
+             r'stringupper|suspend|sysget|'
+             r'thread|tooltip|transform|'
+             r'traytip|urldownloadtofile|while|'
+             r'varsetcapacity|'
+             r'winactivate|winactivatebottom|winclose|'
+             r'winget|wingetactivestats|wingetactivetitle|'
+             r'wingetclass|wingetpos|wingettext|'
+             r'wingettitle|winhide|winkill|'
+             r'winmaximize|winmenuselectitem|winminimize|'
+             r'winminimizeall|winminimizeallundo|winmove|'
+             r'winrestore|winset|winsettitle|'
+             r'winshow|winwait|winwaitactive|'
+             r'winwaitclose|winwaitnotactive'
+             r'true|false|NULL)\b', Keyword, 'command'),
+            ],
+
+        }
+
+class MaqlLexer(RegexLexer):
+    """
+    Lexer for `GoodData MAQL <https://secure.gooddata.com/docs/html/advanced.metric.tutorial.html>`_
+    scripts.
+
+    *New in Pygments 1.4.*
+    """
+
+    name = 'MAQL'
+    aliases = ['maql']
+    filenames = ['*.maql']
+    mimetypes = ['text/x-gooddata-maql','application/x-gooddata-maql']
+
+    flags = re.IGNORECASE
+    tokens = {
+        'root': [
+            # IDENTITY
+            (r'IDENTIFIER\b', Name.Builtin),
+            # IDENTIFIER
+            (r'\{[^}]+\}', Name.Variable),
+            # NUMBER
+            (r'[0-9]+(?:\.[0-9]+)?(?:[eE][+-]?[0-9]{1,3})?', Literal.Number),
+            # STRING
+            (r'"', Literal.String, 'string-literal'),
+            #  RELATION
+            (r'\<\>|\!\=', Operator),
+            (r'\=|\>\=|\>|\<\=|\<', Operator),
+            # :=
+            (r'\:\=', Operator),
+            # OBJECT
+            (r'\[[^]]+\]', Name.Variable.Class),
+            # keywords
+            (r'(DIMENSIONS?|BOTTOM|METRIC|COUNT|OTHER|FACT|WITH|TOP|OR|'
+             r'ATTRIBUTE|CREATE|PARENT|FALSE|ROWS?|FROM|ALL|AS|PF|'
+             r'COLUMNS?|DEFINE|REPORT|LIMIT|TABLE|LIKE|AND|BY|'
+             r'BETWEEN|EXCEPT|SELECT|MATCH|WHERE|TRUE|FOR|IN|'
+             r'WITHOUT|FILTER|ALIAS|ORDER|FACT|WHEN|NOT|ON|'
+             r'KEYS|KEY|FULLSET|PRIMARY|LABELS|LABEL|VISUAL|'
+             r'TITLE|DESCRIPTION|FOLDER|ALTER|DROP|ADD|DATASET|'
+             r'DATATYPE|INT|BIGINT|DOUBLE|DATE|VARCHAR|DECIMAL|'
+             r'SYNCHRONIZE|TYPE|DEFAULT|ORDER|ASC|DESC|HYPERLINK|'
+             r'INCLUDE|TEMPLATE|MODIFY)\b', Keyword),
+            # FUNCNAME
+            (r'[a-zA-Z]\w*\b', Name.Function),
+            # Comments
+            (r'#.*', Comment.Single),
+            # Punctuation
+            (r'[,;\(\)]', Token.Punctuation),
+            # Space is not significant
+            (r'\s+', Text)
+        ],
+        'string-literal': [
+            (r'\\[tnrfbae"\\]', String.Escape),
+            (r'"', Literal.String, '#pop'),
+            (r'[^\\"]+', Literal.String)
+        ],
+    }
+
+
+class GoodDataCLLexer(RegexLexer):
+    """
+    Lexer for `GoodData-CL <http://github.com/gooddata/GoodData-CL/raw/master/cli/src/main/resources/com/gooddata/processor/COMMANDS.txt>`_
+    script files.
+
+    *New in Pygments 1.4.*
+    """
+
+    name = 'GoodData-CL'
+    aliases = ['gooddata-cl']
+    filenames = ['*.gdc']
+    mimetypes = ['text/x-gooddata-cl']
+
+    flags = re.IGNORECASE
+    tokens = {
+        'root': [
+            # Comments
+            (r'#.*', Comment.Single),
+            # Function call
+            (r'[a-zA-Z]\w*', Name.Function),
+            # Argument list
+            (r'\(', Token.Punctuation, 'args-list'),
+            # Punctuation
+            (r';', Token.Punctuation),
+            # Space is not significant
+            (r'\s+', Text)
+        ],
+        'args-list': [
+            (r'\)', Token.Punctuation, '#pop'),
+            (r',', Token.Punctuation),
+            (r'[a-zA-Z]\w*', Name.Variable),
+            (r'=', Operator),
+            (r'"', Literal.String, 'string-literal'),
+            (r'[0-9]+(?:\.[0-9]+)?(?:[eE][+-]?[0-9]{1,3})?', Literal.Number),
+            # Space is not significant
+            (r'\s', Text)
+        ],
+        'string-literal': [
+            (r'\\[tnrfbae"\\]', String.Escape),
+            (r'"', Literal.String, '#pop'),
+            (r'[^\\"]+', Literal.String)
+        ]
+    }
+
+
+class ProtoBufLexer(RegexLexer):
+    """
+    Lexer for `Protocol Buffer <http://code.google.com/p/protobuf/>`_
+    definition files.
+
+    *New in Pygments 1.4.*
+    """
+
+    name = 'Protocol Buffer'
+    aliases = ['protobuf']
+    filenames = ['*.proto']
+
+    tokens = {
+        'root': [
+            (r'[ \t]+', Text),
+            (r'[,;{}\[\]\(\)]', Punctuation),
+            (r'/(\\\n)?/(\n|(.|\n)*?[^\\]\n)', Comment.Single),
+            (r'/(\\\n)?[*](.|\n)*?[*](\\\n)?/', Comment.Multiline),
+            (r'\b(import|option|optional|required|repeated|default|packed|'
+             r'ctype|extensions|to|max|rpc|returns)\b', Keyword),
+            (r'(int32|int64|uint32|uint64|sint32|sint64|'
+             r'fixed32|fixed64|sfixed32|sfixed64|'
+             r'float|double|bool|string|bytes)\b', Keyword.Type),
+            (r'(true|false)\b', Keyword.Constant),
+            (r'(package)(\s+)', bygroups(Keyword.Namespace, Text), 'package'),
+            (r'(message|extend)(\s+)',
+             bygroups(Keyword.Declaration, Text), 'message'),
+            (r'(enum|group|service)(\s+)',
+             bygroups(Keyword.Declaration, Text), 'type'),
+            (r'\".*\"', String),
+            (r'(\d+\.\d*|\.\d+|\d+)[eE][+-]?\d+[LlUu]*', Number.Float),
+            (r'(\d+\.\d*|\.\d+|\d+[fF])[fF]?', Number.Float),
+            (r'(\-?(inf|nan))', Number.Float),
+            (r'0x[0-9a-fA-F]+[LlUu]*', Number.Hex),
+            (r'0[0-7]+[LlUu]*', Number.Oct),
+            (r'\d+[LlUu]*', Number.Integer),
+            (r'[+-=]', Operator),
+            (r'([a-zA-Z_][a-zA-Z0-9_\.]*)([ \t]*)(=)',
+             bygroups(Name.Attribute, Text, Operator)),
+            ('[a-zA-Z_][a-zA-Z0-9_\.]*', Name),
+        ],
+        'package': [
+            (r'[a-zA-Z_][a-zA-Z0-9_]*', Name.Namespace, '#pop')
+        ],
+        'message': [
+            (r'[a-zA-Z_][a-zA-Z0-9_]*', Name.Class, '#pop')
+        ],
+        'type': [
+            (r'[a-zA-Z_][a-zA-Z0-9_]*', Name, '#pop')
+        ],
+    }
+
+
+class HybrisLexer(RegexLexer):
+    """
+    For `Hybris <http://www.hybris-lang.org>`_ source code.
+
+    *New in Pygments 1.4.*
+    """
+
+    name = 'Hybris'
+    aliases = ['hybris', 'hy']
+    filenames = ['*.hy', '*.hyb']
+    mimetypes = ['text/x-hybris', 'application/x-hybris']
+
+    flags = re.MULTILINE | re.DOTALL
+
+    tokens = {
+        'root': [
+            # method names
+            (r'^(\s*(?:function|method|operator\s+)+?)'
+             r'([a-zA-Z_][a-zA-Z0-9_]*)'
+             r'(\s*)(\()', bygroups(Name.Function, Text, Operator)),
+            (r'[^\S\n]+', Text),
+            (r'//.*?\n', Comment.Single),
+            (r'/\*.*?\*/', Comment.Multiline),
+            (r'@[a-zA-Z_][a-zA-Z0-9_\.]*', Name.Decorator),
+            (r'(break|case|catch|next|default|do|else|finally|for|foreach|of|'
+             r'unless|if|new|return|switch|me|throw|try|while)\b', Keyword),
+            (r'(extends|private|protected|public|static|throws|function|method|'
+             r'operator)\b', Keyword.Declaration),
+            (r'(true|false|null|__FILE__|__LINE__|__VERSION__|__LIB_PATH__|'
+             r'__INC_PATH__)\b', Keyword.Constant),
+            (r'(class|struct)(\s+)',
+             bygroups(Keyword.Declaration, Text), 'class'),
+            (r'(import|include)(\s+)',
+             bygroups(Keyword.Namespace, Text), 'import'),
+            (r'(gc_collect|gc_mm_items|gc_mm_usage|gc_collect_threshold|'
+             r'urlencode|urldecode|base64encode|base64decode|sha1|crc32|sha2|'
+             r'md5|md5_file|acos|asin|atan|atan2|ceil|cos|cosh|exp|fabs|floor|'
+             r'fmod|log|log10|pow|sin|sinh|sqrt|tan|tanh|isint|isfloat|ischar|'
+             r'isstring|isarray|ismap|isalias|typeof|sizeof|toint|tostring|'
+             r'fromxml|toxml|binary|pack|load|eval|var_names|var_values|'
+             r'user_functions|dyn_functions|methods|call|call_method|mknod|'
+             r'mkfifo|mount|umount2|umount|ticks|usleep|sleep|time|strtime|'
+             r'strdate|dllopen|dlllink|dllcall|dllcall_argv|dllclose|env|exec|'
+             r'fork|getpid|wait|popen|pclose|exit|kill|pthread_create|'
+             r'pthread_create_argv|pthread_exit|pthread_join|pthread_kill|'
+             r'smtp_send|http_get|http_post|http_download|socket|bind|listen|'
+             r'accept|getsockname|getpeername|settimeout|connect|server|recv|'
+             r'send|close|print|println|printf|input|readline|serial_open|'
+             r'serial_fcntl|serial_get_attr|serial_get_ispeed|serial_get_ospeed|'
+             r'serial_set_attr|serial_set_ispeed|serial_set_ospeed|serial_write|'
+             r'serial_read|serial_close|xml_load|xml_parse|fopen|fseek|ftell|'
+             r'fsize|fread|fwrite|fgets|fclose|file|readdir|pcre_replace|size|'
+             r'pop|unmap|has|keys|values|length|find|substr|replace|split|trim|'
+             r'remove|contains|join)\b', Name.Builtin),
+            (r'(MethodReference|Runner|Dll|Thread|Pipe|Process|Runnable|'
+             r'CGI|ClientSocket|Socket|ServerSocket|File|Console|Directory|'
+             r'Exception)\b', Keyword.Type),
+            (r'"(\\\\|\\"|[^"])*"', String),
+            (r"'\\.'|'[^\\]'|'\\u[0-9a-f]{4}'", String.Char),
+            (r'(\.)([a-zA-Z_][a-zA-Z0-9_]*)',
+             bygroups(Operator, Name.Attribute)),
+            (r'[a-zA-Z_][a-zA-Z0-9_]*:', Name.Label),
+            (r'[a-zA-Z_\$][a-zA-Z0-9_]*', Name),
+            (r'[~\^\*!%&\[\]\(\)\{\}<>\|+=:;,./?\-@]+', Operator),
+            (r'[0-9][0-9]*\.[0-9]+([eE][0-9]+)?[fd]?', Number.Float),
+            (r'0x[0-9a-f]+', Number.Hex),
+            (r'[0-9]+L?', Number.Integer),
+            (r'\n', Text),
+        ],
+        'class': [
+            (r'[a-zA-Z_][a-zA-Z0-9_]*', Name.Class, '#pop')
+        ],
+        'import': [
+            (r'[a-zA-Z0-9_.]+\*?', Name.Namespace, '#pop')
+        ],
+    }

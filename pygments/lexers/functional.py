@@ -5,15 +5,11 @@
 
     Lexers for functional languages.
 
-    :copyright: Copyright 2006-2009 by the Pygments team, see AUTHORS.
+    :copyright: Copyright 2006-2010 by the Pygments team, see AUTHORS.
     :license: BSD, see LICENSE for details.
 """
 
 import re
-try:
-    set
-except NameError:
-    from sets import Set as set
 
 from pygments.lexer import Lexer, RegexLexer, bygroups, include, do_insertions
 from pygments.token import Text, Comment, Operator, Keyword, Name, \
@@ -245,7 +241,7 @@ class CommonLispLexer(RegexLexer):
             (r'#\d*Y.*$', Comment.Special),
 
             # strings and characters
-            (r'"(\\.|[^"])*"', String),
+            (r'"(\\.|[^"\\])*"', String),
             # quoting
             (r":" + symbol, String.Symbol),
             (r"'" + symbol, String.Symbol),
@@ -385,6 +381,7 @@ class HaskellLexer(RegexLexer):
         'import': [
             # Import statements
             (r'\s+', Text),
+            (r'"', String, 'string'),
             # after "funclist" state
             (r'\)', Punctuation, '#pop'),
             (r'qualified\b', Keyword),
@@ -443,7 +440,7 @@ class HaskellLexer(RegexLexer):
             (r'o[0-7]+', String.Escape, '#pop'),
             (r'x[\da-fA-F]+', String.Escape, '#pop'),
             (r'\d+', String.Escape, '#pop'),
-            (r'\n\s+\\', String.Escape, '#pop'),
+            (r'\s+\\', String.Escape, '#pop'),
         ],
     }
 
@@ -474,7 +471,7 @@ class LiterateHaskellLexer(Lexer):
 
         style = self.options.get('litstyle')
         if style is None:
-            style = (text.lstrip()[0] in '%\\') and 'latex' or 'bird'
+            style = (text.lstrip()[0:1] in '%\\') and 'latex' or 'bird'
 
         code = ''
         insertions = []
@@ -554,7 +551,7 @@ class OcamlLexer(RegexLexer):
 
     tokens = {
         'escape-sequence': [
-            (r'\\[\"\'ntbr]', String.Escape),
+            (r'\\[\\\"\'ntbr]', String.Escape),
             (r'\\[0-9]{3}', String.Escape),
             (r'\\x[0-9a-fA-F]{2}', String.Escape),
         ],
@@ -605,7 +602,7 @@ class OcamlLexer(RegexLexer):
             (r'\.', Punctuation),
             (r'[A-Z][A-Za-z0-9_\']*(?=\s*\.)', Name.Namespace),
             (r'[A-Z][A-Za-z0-9_\']*', Name.Class, '#pop'),
-            (r'[a-z][a-z0-9_\']*', Name, '#pop'),
+            (r'[a-z_][A-Za-z0-9_\']*', Name, '#pop'),
         ],
     }
 
@@ -692,7 +689,7 @@ class ErlangLexer(RegexLexer):
             (r'[+-]?'+base_re+r'#[0-9a-zA-Z]+', Number.Integer),
             (r'[+-]?\d+', Number.Integer),
             (r'[+-]?\d+.\d+', Number.Float),
-            (r'[][:_@\".{}()|;,]', Punctuation),
+            (r'[]\[:_@\".{}()|;,]', Punctuation),
             (variable_re, Name.Variable),
             (atom_re, Name),
             (r'\?'+macro_re, Name.Constant),
