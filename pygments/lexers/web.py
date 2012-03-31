@@ -5,7 +5,7 @@
 
     Lexers for web-related languages and markup.
 
-    :copyright: Copyright 2006-2010 by the Pygments team, see AUTHORS.
+    :copyright: Copyright 2006-2012 by the Pygments team, see AUTHORS.
     :license: BSD, see LICENSE for details.
 """
 
@@ -22,11 +22,11 @@ from pygments.lexers.agile import RubyLexer
 from pygments.lexers.compiled import ScalaLexer
 
 
-__all__ = ['HtmlLexer', 'XmlLexer', 'JavascriptLexer', 'CssLexer',
+__all__ = ['HtmlLexer', 'XmlLexer', 'JavascriptLexer', 'JSONLexer', 'CssLexer',
            'PhpLexer', 'ActionScriptLexer', 'XsltLexer', 'ActionScript3Lexer',
            'MxmlLexer', 'HaxeLexer', 'HamlLexer', 'SassLexer', 'ScssLexer',
            'ObjectiveJLexer', 'CoffeeScriptLexer', 'DuelLexer', 'ScamlLexer',
-           'JadeLexer', 'XQueryLexer']
+           'JadeLexer', 'XQueryLexer', 'DtdLexer', 'DartLexer']
 
 
 class JavascriptLexer(RegexLexer):
@@ -36,9 +36,9 @@ class JavascriptLexer(RegexLexer):
 
     name = 'JavaScript'
     aliases = ['js', 'javascript']
-    filenames = ['*.js']
+    filenames = ['*.js', ]
     mimetypes = ['application/javascript', 'application/x-javascript',
-                 'text/x-javascript', 'text/javascript']
+                 'text/x-javascript', 'text/javascript', ]
 
     flags = re.DOTALL
     tokens = {
@@ -56,7 +56,7 @@ class JavascriptLexer(RegexLexer):
             (r'', Text, '#pop')
         ],
         'badregex': [
-            ('\n', Text, '#pop')
+            (r'\n', Text, '#pop')
         ],
         'root': [
             (r'^(?=\s|/|<!--)', Text, 'slashstartsregex'),
@@ -68,7 +68,7 @@ class JavascriptLexer(RegexLexer):
             (r'(for|in|while|do|break|return|continue|switch|case|default|if|else|'
              r'throw|try|catch|finally|new|delete|typeof|instanceof|void|'
              r'this)\b', Keyword, 'slashstartsregex'),
-            (r'(var|with|function)\b', Keyword.Declaration, 'slashstartsregex'),
+            (r'(var|let|with|function)\b', Keyword.Declaration, 'slashstartsregex'),
             (r'(abstract|boolean|byte|char|class|const|debugger|double|enum|export|'
              r'extends|final|float|goto|implements|import|int|interface|long|native|'
              r'package|private|protected|public|short|static|super|synchronized|throws|'
@@ -89,6 +89,74 @@ class JavascriptLexer(RegexLexer):
     }
 
 
+class JSONLexer(RegexLexer):
+    """
+    For JSON data structures.
+
+    *New in Pygments 1.5.*
+    """
+
+    name = 'JSON'
+    aliases = ['json']
+    filenames = ['*.json']
+    mimetypes = [ 'application/json', ]
+
+    flags = re.DOTALL
+    tokens = {
+        'whitespace': [
+            (r'\s+', Text),
+        ],
+
+        # represents a simple terminal value
+        'simplevalue':[
+            (r'(true|false|null)\b', Keyword.Constant),
+            (r'-?[0-9]+', Number.Integer),
+            (r'"(\\\\|\\"|[^"])*"', String.Double),
+        ],
+
+
+        # the right hand side of an object, after the attribute name
+        'objectattribute': [
+            include('value'),
+            (r':', Punctuation),
+            # comma terminates the attribute but expects more
+            (r',', Punctuation, '#pop'),
+            # a closing bracket terminates the entire object, so pop twice
+            (r'}', Punctuation, ('#pop', '#pop')),
+        ],
+
+        # a json object - { attr, attr, ... }
+        'objectvalue': [
+            include('whitespace'),
+            (r'"(\\\\|\\"|[^"])*"', Name.Tag, 'objectattribute'),
+            (r'}', Punctuation, '#pop'),
+        ],
+
+        # json array - [ value, value, ... }
+        'arrayvalue': [
+            include('whitespace'),
+            include('value'),
+            (r',', Punctuation),
+            (r']', Punctuation, '#pop'),
+        ],
+
+        # a json value - either a simple value or a complex value (object or array)
+        'value': [
+            include('whitespace'),
+            include('simplevalue'),
+            (r'{', Punctuation, 'objectvalue'),
+            (r'\[', Punctuation, 'arrayvalue'),
+        ],
+
+
+        # the root of a json document whould be a value
+        'root': [
+            include('value'),
+        ],
+
+    }
+
+
 class ActionScriptLexer(RegexLexer):
     """
     For ActionScript source code.
@@ -99,8 +167,8 @@ class ActionScriptLexer(RegexLexer):
     name = 'ActionScript'
     aliases = ['as', 'actionscript']
     filenames = ['*.as']
-    mimetypes = ['application/x-actionscript', 'text/x-actionscript',
-                 'text/actionscript']
+    mimetypes = ['application/x-actionscript3', 'text/x-actionscript3',
+                 'text/actionscript3']
 
     flags = re.DOTALL
     tokens = {
@@ -172,9 +240,6 @@ class ActionScriptLexer(RegexLexer):
         ]
     }
 
-    def analyse_text(text):
-        return 0.05
-
 
 class ActionScript3Lexer(RegexLexer):
     """
@@ -190,6 +255,7 @@ class ActionScript3Lexer(RegexLexer):
                  'text/actionscript']
 
     identifier = r'[$a-zA-Z_][a-zA-Z0-9_]*'
+    typeidentifier = identifier + '(?:\.<\w+>)?'
 
     flags = re.DOTALL | re.MULTILINE
     tokens = {
@@ -198,12 +264,13 @@ class ActionScript3Lexer(RegexLexer):
             (r'(function\s+)(' + identifier + r')(\s*)(\()',
              bygroups(Keyword.Declaration, Name.Function, Text, Operator),
              'funcparams'),
-            (r'(var|const)(\s+)(' + identifier + r')(\s*)(:)(\s*)(' + identifier + r')',
+            (r'(var|const)(\s+)(' + identifier + r')(\s*)(:)(\s*)(' +
+             typeidentifier + r')',
              bygroups(Keyword.Declaration, Text, Name, Text, Punctuation, Text,
                       Keyword.Type)),
             (r'(import|package)(\s+)((?:' + identifier + r'|\.)+)(\s*)',
              bygroups(Keyword, Text, Name.Namespace, Text)),
-            (r'(new)(\s+)(' + identifier + r')(\s*)(\()',
+            (r'(new)(\s+)(' + typeidentifier + r')(\s*)(\()',
              bygroups(Keyword, Text, Keyword.Type, Text, Operator)),
             (r'//.*?\n', Comment.Single),
             (r'/\*.*?\*/', Comment.Multiline),
@@ -229,18 +296,18 @@ class ActionScript3Lexer(RegexLexer):
             (r'[0-9]+', Number.Integer),
             (r'"(\\\\|\\"|[^"])*"', String.Double),
             (r"'(\\\\|\\'|[^'])*'", String.Single),
-            (r'[~\^\*!%&<>\|+=:;,/?\\{}\[\]();.-]+', Operator),
+            (r'[~\^\*!%&<>\|+=:;,/?\\{}\[\]().-]+', Operator),
         ],
         'funcparams': [
             (r'\s+', Text),
             (r'(\s*)(\.\.\.)?(' + identifier + r')(\s*)(:)(\s*)(' +
-             identifier + r'|\*)(\s*)',
+             typeidentifier + r'|\*)(\s*)',
              bygroups(Text, Punctuation, Name, Text, Operator, Text,
                       Keyword.Type, Text), 'defval'),
             (r'\)', Operator, 'type')
         ],
         'type': [
-            (r'(\s*)(:)(\s*)(' + identifier + r'|\*)',
+            (r'(\s*)(:)(\s*)(' + typeidentifier + r'|\*)',
              bygroups(Text, Operator, Text, Keyword.Type), '#pop:2'),
             (r'\s*', Text, '#pop:2')
         ],
@@ -252,8 +319,9 @@ class ActionScript3Lexer(RegexLexer):
     }
 
     def analyse_text(text):
-        if re.match(r'\w+\s*:\s*\w', text): return 0.3
-        return 0.1
+        if re.match(r'\w+\s*:\s*\w', text):
+            return 0.3
+        return 0
 
 
 class CssLexer(RegexLexer):
@@ -315,7 +383,7 @@ class CssLexer(RegexLexer):
              r'list-style|margin-bottom|margin-left|margin-right|'
              r'margin-top|margin|marker-offset|marks|max-height|max-width|'
              r'min-height|min-width|opacity|orphans|outline|outline-color|'
-             r'outline-style|outline-width|overflow(?:-x|-y|)|padding-bottom|'
+             r'outline-style|outline-width|overflow(?:-x|-y)?|padding-bottom|'
              r'padding-left|padding-right|padding-top|padding|page|'
              r'page-break-after|page-break-before|page-break-inside|'
              r'pause-after|pause-before|pause|pitch|pitch-range|'
@@ -388,7 +456,7 @@ class CssLexer(RegexLexer):
             (r'[\[\]();]+', Punctuation),
             (r'"(\\\\|\\"|[^"])*"', String.Double),
             (r"'(\\\\|\\'|[^'])*'", String.Single),
-            (r'[a-zA-Z][a-zA-Z0-9]+', Name)
+            (r'[a-zA-Z_][a-zA-Z0-9_]+', Name)
         ]
     }
 
@@ -431,13 +499,13 @@ class ObjectiveJLexer(RegexLexer):
             (';', Punctuation),
         ],
         'whitespace': [
-            (r'(@import)(\s+)("(\\\\|\\"|[^"])*")',
+            (r'(@import)(\s+)("(?:\\\\|\\"|[^"])*")',
              bygroups(Comment.Preproc, Text, String.Double)),
-            (r'(@import)(\s+)(<(\\\\|\\>|[^>])*>)',
+            (r'(@import)(\s+)(<(?:\\\\|\\>|[^>])*>)',
              bygroups(Comment.Preproc, Text, String.Double)),
-            (r'(#(?:include|import))(\s+)("(\\\\|\\"|[^"])*")',
+            (r'(#(?:include|import))(\s+)("(?:\\\\|\\"|[^"])*")',
              bygroups(Comment.Preproc, Text, String.Double)),
-            (r'(#(?:include|import))(\s+)(<(\\\\|\\>|[^>])*>)',
+            (r'(#(?:include|import))(\s+)(<(?:\\\\|\\>|[^>])*>)',
              bygroups(Comment.Preproc, Text, String.Double)),
 
             (r'#if\s+0', Comment.Preproc, 'if0'),
@@ -458,7 +526,7 @@ class ObjectiveJLexer(RegexLexer):
             (r'', Text, '#pop'),
         ],
         'badregex': [
-            ('\n', Text, '#pop'),
+            (r'\n', Text, '#pop'),
         ],
         'statements': [
             (r'(L|@)?"', String, 'string'),
@@ -565,7 +633,7 @@ class ObjectiveJLexer(RegexLexer):
             # parameters
             (r'(\(' + _ws + ')'                 # open paren
              r'([^\)]+)'                        # type
-             r'(' + _ws + r'\)' + _ws + r')+'   # close paren
+             r'(' + _ws + r'\)' + _ws + r')'    # close paren
              r'([$a-zA-Z_][a-zA-Z0-9_]+)',      # param name
              bygroups(using(this), Keyword.Type, using(this), Text)),
 
@@ -577,7 +645,7 @@ class ObjectiveJLexer(RegexLexer):
             (r'(:)', Name.Function),
 
             # var args
-            (r'(,' + _ws + r'...)', using(this)),
+            (r'(,' + _ws + r'\.\.\.)', using(this)),
 
             # param name
             (r'([$a-zA-Z_][a-zA-Z0-9_]+)', Text),
@@ -748,7 +816,7 @@ class PhpLexer(RegexLexer):
              r'array|__wakeup|E_ALL|NULL|final|php_user_filter|interface|'
              r'implements|public|private|protected|abstract|clone|try|'
              r'catch|throw|this|use|namespace)\b', Keyword),
-            ('(true|false|null)\b', Keyword.Constant),
+            (r'(true|false|null)\b', Keyword.Constant),
             (r'\$\{\$+[a-zA-Z_][a-zA-Z0-9_]*\}', Name.Variable),
             (r'\$+[a-zA-Z_][a-zA-Z0-9_]*', Name.Variable),
             (r'[\\a-zA-Z_][\\a-zA-Z0-9_]*', Name.Other),
@@ -826,6 +894,92 @@ class PhpLexer(RegexLexer):
         return rv
 
 
+class DtdLexer(RegexLexer):
+    """
+    A lexer for DTDs (Document Type Definitions).
+
+    *New in Pygments 1.5.*
+    """
+
+    flags = re.MULTILINE | re.DOTALL
+
+    name = 'DTD'
+    aliases = ['dtd']
+    filenames = ['*.dtd']
+    mimetypes = ['application/xml-dtd']
+
+    tokens = {
+        'root': [
+            include('common'),
+
+            (r'(<!ELEMENT)(\s+)(\S+)',
+                bygroups(Keyword, Text, Name.Tag), 'element'),
+            (r'(<!ATTLIST)(\s+)(\S+)',
+                bygroups(Keyword, Text, Name.Tag), 'attlist'),
+            (r'(<!ENTITY)(\s+)(\S+)',
+                bygroups(Keyword, Text, Name.Entity), 'entity'),
+            (r'(<!NOTATION)(\s+)(\S+)',
+                bygroups(Keyword, Text, Name.Tag), 'notation'),
+            (r'(<!\[)([^\[\s]+)(\s*)(\[)', # conditional sections
+                bygroups(Keyword, Name.Entity, Text, Keyword)),
+
+            (r'(<!DOCTYPE)(\s+)([^>\s]+)',
+                bygroups(Keyword, Text, Name.Tag)),
+            (r'PUBLIC|SYSTEM', Keyword.Constant),
+            (r'[\[\]>]', Keyword),
+        ],
+
+        'common': [
+            (r'\s+', Text),
+            (r'(%|&)[^;]*;', Name.Entity),
+            ('<!--', Comment, 'comment'),
+            (r'[(|)*,?+]', Operator),
+            (r'"[^"]*"', String.Double),
+            (r'\'[^\']*\'', String.Single),
+        ],
+
+        'comment': [
+            ('[^-]+', Comment),
+            ('-->', Comment, '#pop'),
+            ('-', Comment),
+        ],
+
+        'element': [
+            include('common'),
+            (r'EMPTY|ANY|#PCDATA', Keyword.Constant),
+            (r'[^>\s\|()?+*,]+', Name.Tag),
+            (r'>', Keyword, '#pop'),
+        ],
+
+        'attlist': [
+            include('common'),
+            (r'CDATA|IDREFS|IDREF|ID|NMTOKENS|NMTOKEN|ENTITIES|ENTITY|NOTATION', Keyword.Constant),
+            (r'#REQUIRED|#IMPLIED|#FIXED', Keyword.Constant),
+            (r'xml:space|xml:lang', Keyword.Reserved),
+            (r'[^>\s\|()?+*,]+', Name.Attribute),
+            (r'>', Keyword, '#pop'),
+        ],
+
+        'entity': [
+            include('common'),
+            (r'SYSTEM|PUBLIC|NDATA', Keyword.Constant),
+            (r'[^>\s\|()?+*,]+', Name.Entity),
+            (r'>', Keyword, '#pop'),
+        ],
+
+        'notation': [
+            include('common'),
+            (r'SYSTEM|PUBLIC', Keyword.Constant),
+            (r'[^>\s\|()?+*,]+', Name.Attribute),
+            (r'>', Keyword, '#pop'),
+        ],
+    }
+
+    def analyse_text(text):
+        if not looks_like_xml(text) and \
+            ('<!ELEMENT' in text or '<!ATTLIST' in text or '<!ENTITY' in text):
+            return 0.8
+
 class XmlLexer(RegexLexer):
     """
     Generic lexer for XML (eXtensible Markup Language).
@@ -837,8 +991,7 @@ class XmlLexer(RegexLexer):
     aliases = ['xml']
     filenames = ['*.xml', '*.xsl', '*.rss', '*.xslt', '*.xsd', '*.wsdl']
     mimetypes = ['text/xml', 'application/xml', 'image/svg+xml',
-                 'application/rss+xml', 'application/atom+xml',
-                 'application/xsl+xml', 'application/xslt+xml']
+                 'application/rss+xml', 'application/atom+xml']
 
     tokens = {
         'root': [
@@ -884,6 +1037,7 @@ class XsltLexer(XmlLexer):
     name = 'XSLT'
     aliases = ['xslt']
     filenames = ['*.xsl', '*.xslt']
+    mimetypes = ['application/xsl+xml', 'application/xslt+xml']
 
     EXTRA_KEYWORDS = set([
         'apply-imports', 'apply-templates', 'attribute',
@@ -1015,7 +1169,7 @@ class HaxeLexer(RegexLexer):
           include('codekeywords'),
           (r'[();,\[\]]', Punctuation),
           (r'(?:=|\+=|-=|\*=|/=|%=|&=|\|=|\^=|<<=|>>=|>>>=|\|\||&&|'
-           r'\.\.\.|==|!=|>|<|>=|<=|\||&|\^|<<|>>|>>>|\+|\-|\*|/|%|'
+           r'\.\.\.|==|!=|>|<|>=|<=|\||&|\^|<<|>>>|>>|\+|\-|\*|/|%|'
            r'!|\+\+|\-\-|~|\.|\?|\:)',
            Operator),
           (ident, Name),
@@ -1241,7 +1395,7 @@ class HamlLexer(ExtendedRegexLexer):
 
         'eval-or-plain': [
             (r'[&!]?==', Punctuation, 'plain'),
-            (r'([&!]?[=~])(' + _comma_dot + '*\n)',
+            (r'([&!]?[=~])(' + _comma_dot + r'*\n)',
              bygroups(Punctuation, using(RubyLexer)),
              'root'),
             (r'', Text, 'plain'),
@@ -1250,18 +1404,18 @@ class HamlLexer(ExtendedRegexLexer):
         'content': [
             include('css'),
             (r'%[a-z0-9_:-]+', Name.Tag, 'tag'),
-            (r'!!!' + _dot + '*\n', Name.Namespace, '#pop'),
-            (r'(/)(\[' + _dot + '*?\])(' + _dot + '*\n)',
+            (r'!!!' + _dot + r'*\n', Name.Namespace, '#pop'),
+            (r'(/)(\[' + _dot + '*?\])(' + _dot + r'*\n)',
              bygroups(Comment, Comment.Special, Comment),
              '#pop'),
-            (r'/' + _dot + '*\n', _starts_block(Comment, 'html-comment-block'),
+            (r'/' + _dot + r'*\n', _starts_block(Comment, 'html-comment-block'),
              '#pop'),
-            (r'-#' + _dot + '*\n', _starts_block(Comment.Preproc,
+            (r'-#' + _dot + r'*\n', _starts_block(Comment.Preproc,
                                                  'haml-comment-block'), '#pop'),
-            (r'(-)(' + _comma_dot + '*\n)',
+            (r'(-)(' + _comma_dot + r'*\n)',
              bygroups(Punctuation, using(RubyLexer)),
              '#pop'),
-            (r':' + _dot + '*\n', _starts_block(Name.Decorator, 'filter-block'),
+            (r':' + _dot + r'*\n', _starts_block(Name.Decorator, 'filter-block'),
              '#pop'),
             include('eval-or-plain'),
         ],
@@ -1536,7 +1690,7 @@ class SassLexer(ExtendedRegexLexer):
 
         'import': [
             (r'[ \t]+', Text),
-            (r'[^\s]+', String),
+            (r'\S+', String),
             (r'\n', Text, 'root'),
         ],
 
@@ -1630,20 +1784,25 @@ class CoffeeScriptLexer(RegexLexer):
     tokens = {
         'commentsandwhitespace': [
             (r'\s+', Text),
+            (r'###.*?###', Comment.Multiline),
             (r'#.*?\n', Comment.Single),
+        ],
+        'multilineregex': [
+            include('commentsandwhitespace'),
+            (r'///([gim]+\b|\B)', String.Regex, '#pop'),
+            (r'/', String.Regex),
+            (r'[^/#]+', String.Regex)
         ],
         'slashstartsregex': [
             include('commentsandwhitespace'),
-            (r'/(\\.|[^[/\\\n]|\[(\\.|[^\]\\\n])*])+/'
+            (r'///', String.Regex, ('#pop', 'multilineregex')),
+            (r'/(?! )(\\.|[^[/\\\n]|\[(\\.|[^\]\\\n])*])+/'
              r'([gim]+\b|\B)', String.Regex, '#pop'),
-            (r'(?=/)', Text, ('#pop', 'badregex')),
             (r'', Text, '#pop'),
         ],
-        'badregex': [
-            ('\n', Text, '#pop'),
-        ],
         'root': [
-            (r'^(?=\s|/|<!--)', Text, 'slashstartsregex'),
+            # this next expr leads to infinite loops root -> slashstartsregex
+            #(r'^(?=\s|/|<!--)', Text, 'slashstartsregex'),
             include('commentsandwhitespace'),
             (r'\+\+|--|~|&&|\band\b|\bor\b|\bis\b|\bisnt\b|\bnot\b|\?|:|=|'
              r'\|\||\\(?=\n)|(<<|>>>?|==?|!=?|[-<>+*`%&\|\^/])=?',
@@ -1665,13 +1824,47 @@ class CoffeeScriptLexer(RegexLexer):
               'slashstartsregex'),
             (r'@[$a-zA-Z_][a-zA-Z0-9_\.:]*\s*[:=]\s', Name.Variable.Instance,
               'slashstartsregex'),
+            (r'@', Name.Other, 'slashstartsregex'),
             (r'@?[$a-zA-Z_][a-zA-Z0-9_]*', Name.Other, 'slashstartsregex'),
             (r'[0-9][0-9]*\.[0-9]+([eE][0-9]+)?[fd]?', Number.Float),
             (r'0x[0-9a-fA-F]+', Number.Hex),
             (r'[0-9]+', Number.Integer),
-            (r'"(\\\\|\\"|[^"])*"', String.Double),
-            (r"'(\\\\|\\'|[^'])*'", String.Single),
-        ]
+            ('"""', String, 'tdqs'),
+            ("'''", String, 'tsqs'),
+            ('"', String, 'dqs'),
+            ("'", String, 'sqs'),
+        ],
+        'strings': [
+            (r'[^#\\\'"]+', String),
+            # note that all coffee script strings are multi-line.
+            # hashmarks, quotes and backslashes must be parsed one at a time
+        ],
+        'interpoling_string' : [
+            (r'}', String.Interpol, "#pop"),
+            include('root')
+        ],
+        'dqs': [
+            (r'"', String, '#pop'),
+            (r'\\.|\'', String), # double-quoted string don't need ' escapes
+            (r'#{', String.Interpol, "interpoling_string"),
+            include('strings')
+        ],
+        'sqs': [
+            (r"'", String, '#pop'),
+            (r'#|\\.|"', String), # single quoted strings don't need " escapses
+            include('strings')
+        ],
+        'tdqs': [
+            (r'"""', String, '#pop'),
+            (r'\\.|\'|"', String), # no need to escape quotes in triple-string
+            (r'#{', String.Interpol, "interpoling_string"),
+            include('strings'),
+        ],
+        'tsqs': [
+            (r"'''", String, '#pop'),
+            (r'#|\\.|\'|"', String), # no need to escape quotes in triple-strings
+            include('strings')
+        ],
     }
 
 class DuelLexer(RegexLexer):
@@ -1739,7 +1932,7 @@ class ScamlLexer(ExtendedRegexLexer):
 
         'eval-or-plain': [
             (r'[&!]?==', Punctuation, 'plain'),
-            (r'([&!]?[=~])(' + _dot + '*\n)',
+            (r'([&!]?[=~])(' + _dot + r'*\n)',
              bygroups(Punctuation, using(ScalaLexer)),
              'root'),
             (r'', Text, 'plain'),
@@ -1748,21 +1941,21 @@ class ScamlLexer(ExtendedRegexLexer):
         'content': [
             include('css'),
             (r'%[a-z0-9_:-]+', Name.Tag, 'tag'),
-            (r'!!!' + _dot + '*\n', Name.Namespace, '#pop'),
-            (r'(/)(\[' + _dot + '*?\])(' + _dot + '*\n)',
+            (r'!!!' + _dot + r'*\n', Name.Namespace, '#pop'),
+            (r'(/)(\[' + _dot + '*?\])(' + _dot + r'*\n)',
              bygroups(Comment, Comment.Special, Comment),
              '#pop'),
-            (r'/' + _dot + '*\n', _starts_block(Comment, 'html-comment-block'),
+            (r'/' + _dot + r'*\n', _starts_block(Comment, 'html-comment-block'),
              '#pop'),
-            (r'-#' + _dot + '*\n', _starts_block(Comment.Preproc,
+            (r'-#' + _dot + r'*\n', _starts_block(Comment.Preproc,
                                                  'scaml-comment-block'), '#pop'),
-            (r'(-@\s*)(import)?(' + _dot + '*\n)',
+            (r'(-@\s*)(import)?(' + _dot + r'*\n)',
              bygroups(Punctuation, Keyword, using(ScalaLexer)),
              '#pop'),
-            (r'(-)(' + _dot + '*\n)',
+            (r'(-)(' + _dot + r'*\n)',
              bygroups(Punctuation, using(ScalaLexer)),
              '#pop'),
-            (r':' + _dot + '*\n', _starts_block(Name.Decorator, 'filter-block'),
+            (r':' + _dot + r'*\n', _starts_block(Name.Decorator, 'filter-block'),
              '#pop'),
             include('eval-or-plain'),
         ],
@@ -1849,31 +2042,31 @@ class JadeLexer(ExtendedRegexLexer):
 
         'eval-or-plain': [
             (r'[&!]?==', Punctuation, 'plain'),
-            (r'([&!]?[=~])(' + _dot + '*\n)',
+            (r'([&!]?[=~])(' + _dot + r'*\n)',
              bygroups(Punctuation, using(ScalaLexer)),  'root'),
             (r'', Text, 'plain'),
         ],
 
         'content': [
             include('css'),
-            (r'!!!' + _dot + '*\n', Name.Namespace, '#pop'),
-            (r'(/)(\[' + _dot + '*?\])(' + _dot + '*\n)',
+            (r'!!!' + _dot + r'*\n', Name.Namespace, '#pop'),
+            (r'(/)(\[' + _dot + '*?\])(' + _dot + r'*\n)',
              bygroups(Comment, Comment.Special, Comment),
              '#pop'),
-            (r'/' + _dot + '*\n', _starts_block(Comment, 'html-comment-block'),
+            (r'/' + _dot + r'*\n', _starts_block(Comment, 'html-comment-block'),
              '#pop'),
-            (r'-#' + _dot + '*\n', _starts_block(Comment.Preproc,
+            (r'-#' + _dot + r'*\n', _starts_block(Comment.Preproc,
                                                  'scaml-comment-block'), '#pop'),
-            (r'(-@\s*)(import)?(' + _dot + '*\n)',
+            (r'(-@\s*)(import)?(' + _dot + r'*\n)',
              bygroups(Punctuation, Keyword, using(ScalaLexer)),
              '#pop'),
-            (r'(-)(' + _dot + '*\n)',
+            (r'(-)(' + _dot + r'*\n)',
              bygroups(Punctuation, using(ScalaLexer)),
              '#pop'),
-            (r':' + _dot + '*\n', _starts_block(Name.Decorator, 'filter-block'),
+            (r':' + _dot + r'*\n', _starts_block(Name.Decorator, 'filter-block'),
              '#pop'),
             (r'[a-z0-9_:-]+', Name.Tag, 'tag'),
-            (r'|', Text, 'eval-or-plain'),
+            (r'\|', Text, 'eval-or-plain'),
         ],
 
         'tag': [
@@ -1949,24 +2142,24 @@ class XQueryLexer(ExtendedRegexLexer):
     #    ur"[\u2C00-\u2FEF]|[\u3001-\uD7FF]|[\uF900-\uFDCF]|[\uFDF0-\uFFFD]|"
     #    ur"[\u10000-\uEFFFF]"
     #)
-    ncnamestartchar = r"[A-Z]|_|[a-z]"
+    ncnamestartchar = r"(?:[A-Z]|_|[a-z])"
     # FIX UNICODE LATER
     #ncnamechar = ncnamestartchar + (ur"|-|\.|[0-9]|\u00B7|[\u0300-\u036F]|"
     #                                ur"[\u203F-\u2040]")
-    ncnamechar = ncnamestartchar + r"|-|\.|[0-9]"
-    ncname = "((%s)+(%s)*)" % (ncnamestartchar, ncnamechar)
-    pitarget_namestartchar = r"[A-KN-WY-Z]|_|:|[a-kn-wy-z]"
-    pitarget_namechar = pitarget_namestartchar + r"|-|\.|[0-9]"
-    pitarget = "(%s)+(%s)*" % (pitarget_namestartchar, pitarget_namechar)
+    ncnamechar = r"(?:" + ncnamestartchar + r"|-|\.|[0-9])"
+    ncname = "(?:%s+%s*)" % (ncnamestartchar, ncnamechar)
+    pitarget_namestartchar = r"(?:[A-KN-WY-Z]|_|:|[a-kn-wy-z])"
+    pitarget_namechar = r"(?:" + pitarget_namestartchar + r"|-|\.|[0-9])"
+    pitarget = "%s+%s*" % (pitarget_namestartchar, pitarget_namechar)
     prefixedname = "%s:%s" % (ncname, ncname)
     unprefixedname = ncname
-    qname = "((%s)|(%s))" %(prefixedname, unprefixedname)
+    qname = "(?:%s|%s)" % (prefixedname, unprefixedname)
 
-    entityref = r'&(lt|gt|amp|quot|apos|nbsp);'
-    charref = r'&#[0-9]+;|&#x[0-9a-fA-F]+;'
+    entityref = r'(?:&(?:lt|gt|amp|quot|apos|nbsp);)'
+    charref = r'(?:&#[0-9]+;|&#x[0-9a-fA-F]+;)'
 
-    stringdouble = r'("((' + entityref + r')|(' + charref + r')|("")|([^&"]))*")'
-    stringsingle = r"('((" + entityref + r")|(" + charref + r")|('')|([^&']))*')"
+    stringdouble = r'(?:"(?:' + entityref + r'|' + charref + r'|""|[^&"])*")'
+    stringsingle = r"(?:'(?:" + entityref + r"|" + charref + r"|''|[^&'])*')"
 
     # FIX UNICODE LATER
     #elementcontentchar = (ur'\t|\r|\n|[\u0020-\u0025]|[\u0028-\u003b]|'
@@ -1985,6 +2178,12 @@ class XQueryLexer(ExtendedRegexLexer):
     #x9 | #xA | #xD | [#x20-#xD7FF] | [#xE000-#xFFFD] | [#x10000-#x10FFFF]
 
     flags = re.DOTALL | re.MULTILINE | re.UNICODE
+
+    def punctuation_root_callback(lexer, match, ctx):
+        yield match.start(), Punctuation, match.group(1)
+        # transition to root always - don't pop off stack
+        ctx.stack = ['root']
+        ctx.pos = match.end()
 
     def operator_root_callback(lexer, match, ctx):
         yield match.start(), Operator, match.group(1)
@@ -2167,6 +2366,11 @@ class XQueryLexer(ExtendedRegexLexer):
         ctx.stack = ['root']#.append('root')
         ctx.pos = match.end()
 
+    def pushstate_operator_attribute_callback(lexer, match, ctx):
+        yield match.start(), Name.Attribute, match.group(1)
+        ctx.stack.append('operator')
+        ctx.pos = match.end()
+
     def pushstate_operator_callback(lexer, match, ctx):
         yield match.start(), Keyword, match.group(1)
         yield match.start(), Text, match.group(2)
@@ -2192,19 +2396,24 @@ class XQueryLexer(ExtendedRegexLexer):
 
             (r'(\{)', pushstate_root_callback),
             (r'then|else|external|at|div|except', Keyword, 'root'),
+            (r'order by', Keyword, 'root'),
             (r'is|mod|order\s+by|stable\s+order\s+by', Keyword, 'root'),
             (r'and|or', Operator.Word, 'root'),
             (r'(eq|ge|gt|le|lt|ne|idiv|intersect|in)(?=\b)',
              Operator.Word, 'root'),
             (r'return|satisfies|to|union|where|preserve\s+strip',
              Keyword, 'root'),
-            (r'(::|;|>=|>>|>|\[|<=|<<|<|-|\*|!=|\+|//|/|\||:=|,|=)',
+            (r'(>=|>>|>|<=|<<|<|-|\*|!=|\+|\||:=|=)',
              operator_root_callback),
-            (r'(castable|cast)(\s+)(as)',
+            (r'(::|;|\[|//|/|,)',
+             punctuation_root_callback),
+            (r'(castable|cast)(\s+)(as)\b',
              bygroups(Keyword, Text, Keyword), 'singletype'),
-            (r'(instance)(\s+)(of)|(treat)(\s+)(as)',
+            (r'(instance)(\s+)(of)\b',
              bygroups(Keyword, Text, Keyword), 'itemtype'),
-            (r'(case)|(as)', Keyword, 'itemtype'),
+            (r'(treat)(\s+)(as)\b',
+             bygroups(Keyword, Text, Keyword), 'itemtype'),
+            (r'(case|as)\b', Keyword, 'itemtype'),
             (r'(\))(\s*)(as)',
              bygroups(Punctuation, Text, Keyword), 'itemtype'),
             (r'\$', Name.Variable, 'varname'),
@@ -2229,8 +2438,8 @@ class XQueryLexer(ExtendedRegexLexer):
         'namespacedecl': [
             include('whitespace'),
             (r'\(:', Comment, 'comment'),
-            (r'(at)(\s+)'+stringdouble, bygroups(Keyword, Text, String.Double)),
-            (r"(at)(\s+)"+stringsingle, bygroups(Keyword, Text, String.Single)),
+            (r'(at)(\s+)('+stringdouble+')', bygroups(Keyword, Text, String.Double)),
+            (r"(at)(\s+)("+stringsingle+')', bygroups(Keyword, Text, String.Single)),
             (stringdouble, String.Double),
             (stringsingle, String.Single),
             (r',', Punctuation),
@@ -2262,10 +2471,10 @@ class XQueryLexer(ExtendedRegexLexer):
             include('whitespace'),
             (r'\(:', Comment, 'comment'),
             (r'\$', Punctuation, 'varname'),
-            (r'void\s*\(\s*\)',
+            (r'(void)(\s*)(\()(\s*)(\))',
              bygroups(Keyword, Text, Punctuation, Text, Punctuation), 'operator'),
             (r'(element|attribute|schema-element|schema-attribute|comment|text|'
-             r'node|binary|document-node)(\s*)(\()',
+             r'node|binary|document-node|empty-sequence)(\s*)(\()',
              pushstate_occurrenceindicator_kindtest_callback),
             # Marklogic specific type?
             (r'(processing-instruction)(\s*)(\()',
@@ -2277,9 +2486,9 @@ class XQueryLexer(ExtendedRegexLexer):
             (r'\(\#', Punctuation, 'pragma'),
             (r';', Punctuation, '#pop'),
             (r'then|else', Keyword, '#pop'),
-            (r'(at)(\s+)' + stringdouble,
+            (r'(at)(\s+)(' + stringdouble + ')',
              bygroups(Keyword, Text, String.Double), 'namespacedecl'),
-            (r'(at)(\s+)' + stringsingle,
+            (r'(at)(\s+)(' + stringsingle + ')',
              bygroups(Keyword, Text, String.Single), 'namespacedecl'),
             (r'except|intersect|in|is|return|satisfies|to|union|where',
              Keyword, 'root'),
@@ -2290,16 +2499,16 @@ class XQueryLexer(ExtendedRegexLexer):
              bygroups(Keyword, Text, Keyword, Text, Keyword), 'root'),
             (r'(castable|cast)(\s+)(as)',
              bygroups(Keyword, Text, Keyword), 'singletype'),
-            (r'(instance)(\s+)(of)|(treat)(\s+)(as)',
-             bygroups(Keyword, Text, Keyword)),
+            (r'(treat)(\s+)(as)', bygroups(Keyword, Text, Keyword)),
+            (r'(instance)(\s+)(of)', bygroups(Keyword, Text, Keyword)),
             (r'case|as', Keyword, 'itemtype'),
             (r'(\))(\s*)(as)', bygroups(Operator, Text, Keyword), 'itemtype'),
-            (ncname + r'(:\*)', Keyword.Type, 'operator'),
+            (ncname + r':\*', Keyword.Type, 'operator'),
             (qname, Keyword.Type, 'occurrenceindicator'),
         ],
         'kindtest': [
             (r'\(:', Comment, 'comment'),
-            (r'({)', Punctuation, 'root'),
+            (r'{', Punctuation, 'root'),
             (r'(\))([*+?]?)', popstate_kindtest_callback),
             (r'\*', Name, 'closekindtest'),
             (qname, Name, 'closekindtest'),
@@ -2308,7 +2517,7 @@ class XQueryLexer(ExtendedRegexLexer):
         'kindtestforpi': [
             (r'\(:', Comment, 'comment'),
             (r'\)', Punctuation, '#pop'),
-            (ncname, bygroups(Name.Variable, Name.Variable)),
+            (ncname, Name.Variable),
             (stringdouble, String.Double),
             (stringsingle, String.Single),
         ],
@@ -2322,8 +2531,8 @@ class XQueryLexer(ExtendedRegexLexer):
         'xml_comment': [
             (r'(-->)', popstate_xmlcomment_callback),
             (r'[^-]{1,2}', Literal),
-            (r'\u009|\u00A|\u00D|[\u0020-\u00D7FF]|[\u00E000-\u00FFFD]|'
-             r'[\u0010000-\u0010FFFF]', Literal),
+            (ur'\t|\r|\n|[\u0020-\U0000D7FF]|[\U0000E000-\U0000FFFD]|'
+             ur'[\U00010000-\U0010FFFF]', Literal),
         ],
         'processing_instruction': [
             (r'\s+', Text, 'processing_instruction_content'),
@@ -2332,13 +2541,13 @@ class XQueryLexer(ExtendedRegexLexer):
         ],
         'processing_instruction_content': [
             (r'\?>', String.Doc, '#pop'),
-            (r'\u009|\u00A|\u00D|[\u0020-\uD7FF]|[\uE000-\uFFFD]|'
-             r'[\u10000-\u10FFFF]', Literal),
+            (ur'\t|\r|\n|[\u0020-\uD7FF]|[\uE000-\uFFFD]|'
+             ur'[\U00010000-\U0010FFFF]', Literal),
         ],
         'cdata_section': [
             (r']]>', String.Doc, '#pop'),
-            (r'\u009|\u00A|\u00D|[\u0020-\uD7FF]|[\uE000-\uFFFD]|'
-             r'[\u10000-\u10FFFF]', Literal),
+            (ur'\t|\r|\n|[\u0020-\uD7FF]|[\uE000-\uFFFD]|'
+             ur'[\U00010000-\U0010FFFF]', Literal),
         ],
         'start_tag': [
             include('whitespace'),
@@ -2406,9 +2615,9 @@ class XQueryLexer(ExtendedRegexLexer):
         ],
         'pragmacontents': [
             (r'#\)', Punctuation, 'operator'),
-            (r'\u009|\u00A|\u00D|[\u0020-\u00D7FF]|[\u00E000-\u00FFFD]|'
-             r'[\u0010000-\u0010FFFF]', Literal),
-            (r'(\s*)', Text),
+            (ur'\t|\r|\n|[\u0020-\U0000D7FF]|[\U0000E000-\U0000FFFD]|'
+             ur'[\U00010000-\U0010FFFF]', Literal),
+            (r'(\s+)', Text),
         ],
         'occurrenceindicator': [
             include('whitespace'),
@@ -2480,7 +2689,7 @@ class XQueryLexer(ExtendedRegexLexer):
             (r'(\))(\s+)(as)', bygroups(Operator, Text, Keyword), 'itemtype'),
 
             (r'(element|attribute|schema-element|schema-attribute|comment|'
-             r'text|node|document-node)(\s+)(\()',
+             r'text|node|document-node|empty-sequence)(\s+)(\()',
              pushstate_operator_kindtest_callback),
 
             (r'(processing-instruction)(\s+)(\()',
@@ -2514,8 +2723,9 @@ class XQueryLexer(ExtendedRegexLexer):
             (r'(element)(\s+)(?=' +qname+ r')',
              bygroups(Keyword, Text), 'element_qname'),
             #PROCESSING_INSTRUCTION
-            (r'(processing-instruction)(\s+)' + ncname + r'(\s*)(\{)',
-             bygroups(Keyword, Text, Name.Variable, Text, Punctuation), 'operator'),
+            (r'(processing-instruction)(\s+)(' + ncname + r')(\s*)(\{)',
+             bygroups(Keyword, Text, Name.Variable, Text, Punctuation),
+             'operator'),
 
             (r'(declare|define)(\s+)(function)',
              bygroups(Keyword, Text, Keyword)),
@@ -2557,16 +2767,82 @@ class XQueryLexer(ExtendedRegexLexer):
             (r'(catch)(\s*)(\()(\$)',
              bygroups(Keyword, Text, Punctuation, Name.Variable), 'varname'),
 
-            (r'@' + qname, Name.Attribute),
-            (r'@\*', Name.Attribute),
-            (r'@' + ncname, Name.Attribute),
+            (r'(@' + qname + ')', pushstate_operator_attribute_callback),
+            (r'(@\*)', pushstate_operator_attribute_callback),
+            (r'(@' + ncname + ')', pushstate_operator_attribute_callback),
 
             (r'//|/|\+|-|;|,|\(|\)', Punctuation),
 
             # STANDALONE QNAMES
-            (qname + r'(?=\s*[{])', Name.Variable, 'qname_braren'),
-            (qname + r'(?=\s*[(])', Name.Function, 'qname_braren'),
+            (qname + r'(?=\s*{)', Name.Variable, 'qname_braren'),
+            (qname + r'(?=\s*\()', Name.Function, 'qname_braren'),
             (qname, Name.Variable, 'operator'),
         ]
     }
 
+
+class DartLexer(RegexLexer):
+    """
+    For `Dart <http://dartlang.org/>`_ source code.
+
+    *New in Pygments 1.5.*
+    """
+
+    name = 'Dart'
+    aliases = ['dart']
+    filenames = ['*.dart']
+    mimetypes = ['text/x-dart']
+
+    flags = re.MULTILINE | re.DOTALL
+
+    tokens = {
+        'root': [
+            (r'#!(.*?)$', Comment.Preproc),
+            (r'(#)(import|library|source)', bygroups(Text, Keyword)),
+            (r'[^\S\n]+', Text),
+            (r'//.*?\n', Comment.Single),
+            (r'/\*.*?\*/', Comment.Multiline),
+            (r'(class|interface)(\s+)',
+             bygroups(Keyword.Declaration, Text), 'class'),
+            (r'(assert|break|case|catch|continue|default|do|else|finally|for|'
+             r'if|in|is|new|return|super|switch|this|throw|try|while)\b',
+             Keyword),
+            (r'(abstract|const|extends|factory|final|get|implements|'
+             r'native|operator|set|static|typedef|var)\b', Keyword.Declaration),
+            (r'(bool|double|Dynamic|int|num|Object|String|void)', Keyword.Type),
+            (r'(false|null|true)', Keyword.Constant),
+            (r'@"(\\\\|\\"|[^"])*"', String.Double), # raw string
+            (r"@'(\\\\|\\'|[^'])*'", String.Single), # raw string
+            (r'"', String.Double, 'string_double'),
+            (r"'", String.Single, 'string_single'),
+            (r'[a-zA-Z_$][a-zA-Z0-9_]*:', Name.Label),
+            (r'[a-zA-Z_$][a-zA-Z0-9_]*', Name),
+            (r'[~!%^&*+=|?:<>/-]', Operator),
+            (r'[(){}\[\],.;]', Punctuation),
+            (r'0[xX][0-9a-fA-F]+', Number.Hex),
+            # DIGIT+ (‘.’ DIGIT*)? EXPONENT?
+            (r'\d+(\.\d*)?([eE][+-]?\d+)?', Number),
+            (r'\.\d+([eE][+-]?\d+)?', Number), # ‘.’ DIGIT+ EXPONENT?
+            (r'\n', Text)
+            # pseudo-keyword negate intentionally left out
+        ],
+        'class': [
+            (r'[a-zA-Z_$][a-zA-Z0-9_]*', Name.Class, '#pop')
+        ],
+        'string_double': [
+            (r'"', String.Double, '#pop'),
+            (r'[^"$]+', String.Double),
+            (r'(\$)([a-zA-Z_][a-zA-Z0-9_]*)', bygroups(String.Interpol, Name)),
+            (r'(\$\{)(.*?)(\})',
+             bygroups(String.Interpol, using(this), String.Interpol)),
+            (r'\$+', String.Double)
+        ],
+        'string_single': [
+            (r"'", String.Single, '#pop'),
+            (r"[^'$]+", String.Single),
+            (r'(\$)([a-zA-Z_][a-zA-Z0-9_]*)', bygroups(String.Interpol, Name)),
+            (r'(\$\{)(.*?)(\})',
+             bygroups(String.Interpol, using(this), String.Interpol)),
+            (r'\$+', String.Single)
+        ]
+    }
