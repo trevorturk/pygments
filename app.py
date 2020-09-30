@@ -5,6 +5,7 @@ from pygments import highlight
 from pygments.lexers import get_lexer_by_name
 from pygments.formatters import HtmlFormatter
 
+#defining class app
 class App(webapp.RequestHandler):
   def get(self):
     self.response.headers['Content-Type'] = 'text/plain'
@@ -19,7 +20,7 @@ def pygmentize(lang, code):
   lexer = get_lexer_by_name(lang)
   formatter = HtmlFormatter()
   return highlight(code, lexer, formatter)
-
+# main function
 def main():
   run_wsgi_app(application)
 
