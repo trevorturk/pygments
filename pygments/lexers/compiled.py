@@ -879,7 +879,7 @@ class DelphiLexer(Lexer):
                     # abort function naming ``foo = Function(...)``
                     next_token_is_function = False
                     # if we are in a function block we count the open
-                    # braces because ootherwise it's impossible to
+                    # braces because otherwise it's impossible to
                     # determine the end of the modifier context
                     if in_function_block or in_property_block:
                         if scanner.match == '(':
@@ -897,7 +897,7 @@ class DelphiLexer(Lexer):
                     elif lowercase_name in self.keywords:
                         token = Keyword
                         # if we are in a special block and a
-                        # block ending keyword occours (and the parenthesis
+                        # block ending keyword occurs (and the parenthesis
                         # is balanced) we end the current block context
                         if (in_function_block or in_property_block) and \
                            lowercase_name in self.BLOCK_KEYWORDS and \

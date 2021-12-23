@@ -2691,9 +2691,9 @@ class UrbiscriptLexer(ExtendedRegexLexer):
              r'signed|sizeof|static_cast|struct|template|typedef|typeid|'
              r'typename|union|unsigned|using|virtual|volatile|'
              r'wchar_t)\b', Keyword.Reserved),
-            # deprecated keywords, use a meaningfull token when available
+            # deprecated keywords, use a meaningful token when available
             (r'(?:emit|foreach|internal|loopn|static)\b', Keyword),
-            # ignored keywords, use a meaningfull token when available
+            # ignored keywords, use a meaningful token when available
             (r'(?:private|protected|public)\b', Keyword),
             (r'(?:var|do|const|function|class)\b', Keyword.Declaration),
             (r'(?:true|false|nil|void)\b', Keyword.Constant),

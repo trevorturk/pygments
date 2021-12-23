@@ -1164,7 +1164,7 @@ class JavascriptPhpLexer(DelegatingLexer):
 
 class HtmlSmartyLexer(DelegatingLexer):
     """
-    Subclass of the `SmartyLexer` that highighlights unlexed data with the
+    Subclass of the `SmartyLexer` that highlights unlexed data with the
     `HtmlLexer`.
 
     Nested Javascript and CSS is highlighted too.
@@ -1247,7 +1247,7 @@ class JavascriptSmartyLexer(DelegatingLexer):
 
 class HtmlDjangoLexer(DelegatingLexer):
     """
-    Subclass of the `DjangoLexer` that highighlights unlexed data with the
+    Subclass of the `DjangoLexer` that highlights unlexed data with the
     `HtmlLexer`.
 
     Nested Javascript and CSS is highlighted too.

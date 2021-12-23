@@ -505,7 +505,7 @@ class RegexLexer(Lexer):
         """
         Split ``text`` into (tokentype, text) pairs.
 
-        ``stack`` is the inital stack (default: ``['root']``)
+        ``stack`` is the initial stack (default: ``['root']``)
         """
         pos = 0
         tokendefs = self._tokens

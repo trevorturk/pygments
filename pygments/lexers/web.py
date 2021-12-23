@@ -149,7 +149,7 @@ class JSONLexer(RegexLexer):
         ],
 
 
-        # the root of a json document whould be a value
+        # the root of a json document would be a value
         'root': [
             include('value'),
         ],
